@@ -3,5 +3,5 @@
   "description": "Run JavaScript from other applications",
   "path": "/Users/jacobweber/Development/workspace/browser_remote/app/bin/browser_remote",
   "type": "stdio",
-  "allowed_extensions": [ "browser_remote@example.org" ]
+  "allowed_extensions": ["browser_remote@jacobweber.com"]
 }
