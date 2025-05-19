@@ -22,7 +22,7 @@
     "default_icon": "icons/message.svg"
   },
 
-  "permissions": ["nativeMessaging"],
+  "permissions": ["nativeMessaging", "tabs"],
 
   "content_scripts": [
     {

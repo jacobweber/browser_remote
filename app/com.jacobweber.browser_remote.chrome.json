@@ -1,7 +1,7 @@
 {
-  "name": "browser_remote",
+  "name": "com.jacobweber.browser_remote",
   "description": "Run JavaScript from other applications",
   "path": "/Users/jacobweber/Development/workspace/browser_remote/app/bin/browser_remote",
   "type": "stdio",
-  "allowed_extensions": ["browser_remote@jacobweber.com"]
+  "allowed_origins": ["chrome-extension://jgmdchjaeklnmaikghgeiodkegiiedge/"]
 }
