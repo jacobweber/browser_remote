@@ -1,4 +1,7 @@
 /*
+Opens web server on port 5555, or next free port, or port specified with --port=<port>.
+Send requests to the web server, and they'll be evaluated in the front browser window, and returned.
+
 Request format:
 POST /
 {
@@ -11,8 +14,7 @@ POST /
 Response format:
 {
 	"status": "ok" | "error"
-	// JSON-encoded response:
-	"result": "\"https://www.google.com\""
+	"result": "https://www.google.com"
 }
 */
 
@@ -24,6 +26,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -36,8 +39,8 @@ import (
 )
 
 // command-line flags
-var host = flag.String("host", "localhost", "listen hostname")
-var port = flag.String("port", "5555", "listen port")
+var host = flag.String("host", "localhost", "web server hostname")
+var port = flag.Int("port", 5555, "web server port")
 
 // constants for Logger
 var (
@@ -56,7 +59,7 @@ var bufferSize = 8192
 // IncomingBrowserMessage represents a message from the browser to the native host.
 type IncomingBrowserMessage struct {
 	Id     string `json:"id"`
-	Result string `json:"result"`
+	Result any    `json:"result"`
 }
 
 // OutgoingBrowserMessage respresents a response from the native host to the browser.
@@ -73,9 +76,10 @@ type IncomingHttpMessage struct {
 // OutgoingHttpMessage respresents a response from the web server.
 type OutgoingHttpMessage struct {
 	Status string `json:"status"`
-	Result string `json:"result"`
+	Result any    `json:"result"`
 }
 
+// Map UUIDs of HTTP requests to a channel where we send their browser response.
 var browserResponders map[string]chan IncomingBrowserMessage
 
 // Init initializes logger and determines native byte order.
@@ -96,29 +100,33 @@ func Init(traceHandle io.Writer, errorHandle io.Writer) {
 func main() {
 	file, err := os.OpenFile("browser_remote.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		Init(os.Stdout, os.Stderr)
-		Error.Printf("Unable to create and/or open log file. Will log to Stdout and Stderr. Error: %v", err)
-	} else {
-		Init(file, file)
-		// ensure we close the log file when we're done
-		defer file.Close()
+		panic("Unable to create and/or open log file.")
 	}
+	Init(file, file)
+	// ensure we close the log file when we're done
+	defer file.Close()
+
 	browserResponders = make(map[string]chan IncomingBrowserMessage)
 
 	flag.Parse()
-	if !waitForPortFree(*host, *port, 10) {
+	argv := len(os.Args)
+	if argv > 1 {
+		Trace.Printf("arg: %v", os.Args[1])
+	}
+	openPort, ok := findFreePort(*host, *port, 10, true)
+	if !ok {
 		Error.Printf("Unable to open port: %v:%v", *host, *port)
 		return
 	}
 
 	http.Handle("/", http.HandlerFunc(handlePost))
 	go func() {
-		err = http.ListenAndServe(*host+":"+*port, nil)
+		err = http.ListenAndServe(fmt.Sprintf("%v:%v", *host, openPort), nil)
 		if err != nil {
 			Error.Printf("Unable to open HTTP server: %v", err)
 		}
 	}()
-	Trace.Printf("Opened HTTP server on http://%v:%v", *host, *port)
+	Trace.Printf("Opened HTTP server on http://%v:%v", *host, openPort)
 
 	Trace.Printf("Chrome native messaging host started. Native byte order: %v.", nativeEndian)
 	read()
@@ -157,8 +165,8 @@ func handlePost(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func isPortInUse(host string, port string, timeout time.Duration) bool {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+func isPortInUse(host string, port int, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%v:%v", host, port), timeout)
 	if err != nil || conn == nil {
 		return false
 	}
@@ -166,15 +174,19 @@ func isPortInUse(host string, port string, timeout time.Duration) bool {
 	return true
 }
 
-func waitForPortFree(host string, port string, maxTries int) bool {
+func findFreePort(host string, port int, maxTries int, increment bool) (int, bool) {
 	timeout := time.Second / 2
 	for i := 0; i < maxTries; i++ {
 		if !isPortInUse(host, port, timeout) {
-			return true
+			return port, true
 		}
+		Error.Printf("Unable to open port: %v:%v; retrying", host, port)
 		time.Sleep(timeout)
+		if increment {
+			port++
+		}
 	}
-	return false
+	return port, false
 }
 
 // read creates a new buffered I/O reader and reads messages from Stdin.
@@ -240,12 +252,12 @@ func handleMessageFromBrowser(msg []byte) {
 
 // decodeMessageFromBrowser unmarshals incoming json request and returns query value.
 func decodeMessageFromBrowser(msg []byte) IncomingBrowserMessage {
-	var iMsg IncomingBrowserMessage
-	err := json.Unmarshal(msg, &iMsg)
+	var incomingMsg IncomingBrowserMessage
+	err := json.Unmarshal(msg, &incomingMsg)
 	if err != nil {
 		Error.Printf("Unable to unmarshal json to struct: %v", err)
 	}
-	return iMsg
+	return incomingMsg
 }
 
 // sendToBrowser sends an OutgoingBrowserMessage to os.Stdout.

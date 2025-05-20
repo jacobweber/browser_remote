@@ -15,7 +15,7 @@ port.onMessage.addListener((message) => {
   chrome.tabs.query({
     currentWindow: true,
     active: true,
-    url: "<all_urls>",
+    url: ["https://*/*", "http://*/*"],
   }, tabs => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError);
@@ -32,6 +32,10 @@ port.onMessage.addListener((message) => {
       chrome.tabs.sendMessage(tabs[0].id, message, {}, response => {
         if (chrome.runtime.lastError) {
           console.error(chrome.runtime.lastError);
+          port.postMessage({
+            id: message.id,
+            result: ""
+          });
         } else {
           console.log("Received response from tab", response);
           port.postMessage({
