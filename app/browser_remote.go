@@ -13,7 +13,7 @@ POST /
 
 Response format:
 {
-	"status": "ok" | "error"
+	"status": "ok" | "error message"
 	"result": "https://www.google.com"
 }
 */
@@ -42,6 +42,8 @@ import (
 var host = flag.String("host", "localhost", "web server hostname")
 var port = flag.Int("port", 5555, "web server port")
 
+const browserTimeoutSecs = 5
+
 // constants for Logger
 var (
 	// Trace logs general information messages.
@@ -54,7 +56,7 @@ var (
 var nativeEndian binary.ByteOrder
 
 // bufferSize used to set size of IO buffer - adjust to accommodate message payloads
-var bufferSize = 8192
+const bufferSize = 8192
 
 // IncomingBrowserMessage represents a message from the browser to the native host.
 type IncomingBrowserMessage struct {
@@ -130,11 +132,22 @@ func main() {
 	Trace.Printf("Opened HTTP server on http://%v:%v", *host, openPort)
 
 	Trace.Printf("Chrome native messaging host started. Native byte order: %v.", nativeEndian)
-	read()
+	readMessagesFromBrowser()
 	Trace.Print("Chrome native messaging host exited.")
 }
 
 func handlePost(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path != "/" {
+		Error.Printf("Invalid path %v", req.URL.Path)
+		respondJson(w, http.StatusNotFound, OutgoingHttpMessage{Status: "not found"})
+		return
+	}
+	if req.Method != "POST" {
+		Error.Printf("Invalid method %v", req.Method)
+		respondJson(w, http.StatusMethodNotAllowed, OutgoingHttpMessage{Status: "invalid method"})
+		return
+	}
+
 	Trace.Printf("Got POST request")
 	var msg IncomingHttpMessage
 	decoder := json.NewDecoder(req.Body)
@@ -142,6 +155,7 @@ func handlePost(w http.ResponseWriter, req *http.Request) {
 	err := decoder.Decode(&msg)
 	if err != nil {
 		Error.Printf("Error parsing POST request: %v", err)
+		respondJson(w, http.StatusBadRequest, OutgoingHttpMessage{Status: "invalid JSON"})
 		return
 	}
 
@@ -153,21 +167,19 @@ func handlePost(w http.ResponseWriter, req *http.Request) {
 	sendToBrowser(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
 
 	// wait for a browser message or a timeout
-	w.Header().Set("Content-Type", "application/json")
 	select {
 	case browserResponse := <-browserResponder:
-		w.WriteHeader(http.StatusOK)
-		status := "ok"
-		if browserResponse.Status != "ok" {
-			status = "error"
-		}
-		json.NewEncoder(w).Encode(OutgoingHttpMessage{Status: status, Result: browserResponse.Result})
-	case <-time.After(30 * time.Second):
+		respondJson(w, http.StatusOK, OutgoingHttpMessage{Status: browserResponse.Status, Result: browserResponse.Result})
+	case <-time.After(browserTimeoutSecs * time.Second):
 		Error.Printf("Timeout responding to request ID %v", uuid)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(OutgoingHttpMessage{Status: "timeout"})
+		respondJson(w, http.StatusInternalServerError, OutgoingHttpMessage{Status: "timeout"})
 	}
+}
+
+func respondJson(w http.ResponseWriter, statusCode int, msg OutgoingHttpMessage) {
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(msg)
 }
 
 func isPortInUse(host string, port int, timeout time.Duration) bool {
@@ -194,8 +206,8 @@ func findFreePort(host string, port int, maxTries int, increment bool) (int, boo
 	return port, false
 }
 
-// read creates a new buffered I/O reader and reads messages from Stdin.
-func read() {
+// readMessagesFromBrowser creates a new buffered I/O reader and reads messages from Stdin.
+func readMessagesFromBrowser() {
 	v := bufio.NewReader(os.Stdin)
 	// adjust buffer size to accommodate your json payload size limits; default is 4096
 	s := bufio.NewReaderSize(v, bufferSize)

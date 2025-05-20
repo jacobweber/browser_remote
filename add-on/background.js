@@ -12,6 +12,14 @@ port.onMessage.addListener((message) => {
     return;
   }
 
+  const postError = status => {
+    port.postMessage({
+      id: message.id,
+      status,
+      result: null
+    });
+  }
+
   chrome.tabs.query({
     currentWindow: true,
     active: true,
@@ -19,26 +27,14 @@ port.onMessage.addListener((message) => {
   }, tabs => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError);
-      port.postMessage({
-        id: message.id,
-        status: "error",
-        result: null
-      });
+      postError(chrome.runtime.lastError);
     } else if (tabs.length === 0) {
-      port.postMessage({
-        id: message.id,
-        status: "error",
-        result: null
-      });
+      postError("no open windows");
     } else {
       chrome.tabs.sendMessage(tabs[0].id, message, {}, response => {
         if (chrome.runtime.lastError) {
           console.error(chrome.runtime.lastError);
-          port.postMessage({
-            id: message.id,
-            status: "error",
-            result: null
-          });
+          postError(chrome.runtime.lastError);
         } else {
           console.log("Received response from tab", response);
           port.postMessage({
