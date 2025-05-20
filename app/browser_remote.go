@@ -59,6 +59,7 @@ var bufferSize = 8192
 // IncomingBrowserMessage represents a message from the browser to the native host.
 type IncomingBrowserMessage struct {
 	Id     string `json:"id"`
+	Status string `json:"status"`
 	Result any    `json:"result"`
 }
 
@@ -156,7 +157,11 @@ func handlePost(w http.ResponseWriter, req *http.Request) {
 	select {
 	case browserResponse := <-browserResponder:
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(OutgoingHttpMessage{Status: "ok", Result: browserResponse.Result})
+		status := "ok"
+		if browserResponse.Status != "ok" {
+			status = "error"
+		}
+		json.NewEncoder(w).Encode(OutgoingHttpMessage{Status: status, Result: browserResponse.Result})
 	case <-time.After(30 * time.Second):
 		Error.Printf("Timeout responding to request ID %v", uuid)
 		w.WriteHeader(http.StatusInternalServerError)

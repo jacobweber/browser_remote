@@ -3,6 +3,10 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   const response = Function(`"use strict";return (${message.query});`)();
   console.log("Sending response to background script:", response);
   // stringify may throw error on circular references
-  sendResponse(JSON.parse(JSON.stringify(response)));
+  try {
+    sendResponse({ status: "ok", result: JSON.parse(JSON.stringify(response)) });
+  } catch (err) {
+    sendResponse({ status: "error", result: null });
+  }
   return true;
 });

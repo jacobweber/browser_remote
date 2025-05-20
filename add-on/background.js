@@ -21,12 +21,14 @@ port.onMessage.addListener((message) => {
       console.error(chrome.runtime.lastError);
       port.postMessage({
         id: message.id,
-        result: ""
+        status: "error",
+        result: null
       });
     } else if (tabs.length === 0) {
       port.postMessage({
         id: message.id,
-        result: ""
+        status: "error",
+        result: null
       });
     } else {
       chrome.tabs.sendMessage(tabs[0].id, message, {}, response => {
@@ -34,13 +36,15 @@ port.onMessage.addListener((message) => {
           console.error(chrome.runtime.lastError);
           port.postMessage({
             id: message.id,
-            result: ""
+            status: "error",
+            result: null
           });
         } else {
           console.log("Received response from tab", response);
           port.postMessage({
             id: message.id,
-            result: response
+            status: response.status,
+            result: response.result
           });
         }
       });
