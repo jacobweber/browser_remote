@@ -74,7 +74,7 @@ func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
 	if incomingMsg.Id != "" {
 		responder := ws.browserResponders[incomingMsg.Id]
 		if responder != nil {
-			//Trace.Printf("Message received from browser for ID: %v", incomingMsg.Id)
+			ws.logger.Trace.Printf("Message received from browser for ID: %v", incomingMsg.Id)
 			responder <- incomingMsg
 		}
 	}

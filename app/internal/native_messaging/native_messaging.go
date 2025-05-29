@@ -98,7 +98,7 @@ func (nm *NativeMessaging[I, O]) readMessageLength(msg []byte) int {
 // handleMessageFromBrowser parses incoming message from browser
 func (nm *NativeMessaging[I, O]) handleMessageFromBrowser(msg []byte, responder Responder[I]) {
 	incomingMsg := nm.decodeMessageFromBrowser(msg)
-	//Trace.Printf("Message received from browser: %s", msg)
+	nm.logger.Trace.Printf("Message received from browser: %s", msg)
 	responder.HandleMessage(incomingMsg)
 }
 
