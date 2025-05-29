@@ -26,15 +26,15 @@ port.onMessage.addListener((message) => {
     url: ["https://*/*", "http://*/*"],
   }, tabs => {
     if (chrome.runtime.lastError) {
-      console.error(chrome.runtime.lastError);
-      postError(chrome.runtime.lastError);
+      console.error(chrome.runtime.lastError.message);
+      postError(chrome.runtime.lastError.message);
     } else if (tabs.length === 0) {
       postError("no open windows");
     } else {
       chrome.tabs.sendMessage(tabs[0].id, message, {}, response => {
         if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError);
-          postError(chrome.runtime.lastError);
+          console.error(chrome.runtime.lastError.message);
+          postError(chrome.runtime.lastError.message);
         } else {
           console.log("Received response from tab", response);
           port.postMessage({
