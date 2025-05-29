@@ -1,4 +1,4 @@
-package main
+package network
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ func FindFreePort(host string, port int, maxTries int, increment bool) (int, boo
 		if !isPortInUse(host, port, timeout) {
 			return port, true
 		}
-		Error.Printf("Unable to open port: %v:%v; retrying", host, port)
+		//Error.Printf("Unable to open port: %v:%v; retrying", host, port)
 		time.Sleep(timeout)
 		if increment {
 			port++
