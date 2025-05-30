@@ -40,6 +40,17 @@ type BrowserSender interface {
 	SendToBrowser(msg OutgoingBrowserMessage)
 }
 
+type Timer interface {
+	StartTimer(time.Duration) <-chan time.Time
+}
+
+type RealTimer struct {
+}
+
+func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
+	return time.After(dur)
+}
+
 type WebServer struct {
 	logger *logger.Logger
 	host   string
@@ -48,16 +59,21 @@ type WebServer struct {
 	browserResponders map[string]chan IncomingBrowserMessage
 	sender            BrowserSender
 	server            *http.ServeMux
+	timer             Timer
 }
 
-func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender) WebServer {
+func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender, timer Timer) WebServer {
 	server := http.NewServeMux()
+	if timer == nil {
+		timer = &RealTimer{}
+	}
 	ws := WebServer{
 		logger:            logger,
 		host:              host,
 		port:              port,
 		browserResponders: make(map[string]chan IncomingBrowserMessage),
 		sender:            sender,
+		timer:             timer,
 		server:            server,
 	}
 	ws.server.Handle("/", http.HandlerFunc(ws.HandlePost))
@@ -118,7 +134,7 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	select {
 	case browserResponse := <-browserResponder:
 		respondJson(w, http.StatusOK, OutgoingHttpMessage{Status: browserResponse.Status, Result: browserResponse.Result})
-	case <-time.After(browserTimeoutSecs * time.Second):
+	case <-ws.timer.StartTimer(browserTimeoutSecs * time.Second):
 		ws.logger.Error.Printf("Timeout responding to request ID %v", uuid)
 		respondJson(w, http.StatusInternalServerError, OutgoingHttpMessage{Status: "timeout"})
 	}

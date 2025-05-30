@@ -48,7 +48,7 @@ func main() {
 	}
 
 	nm := native_messaging.NewNativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage](&logger, os.Stdin, os.Stdout)
-	ws := web_server.NewWebServer(&logger, *host, openPort, &nm)
+	ws := web_server.NewWebServer(&logger, *host, openPort, &nm, nil)
 
 	ws.Start()
 	nm.ReadMessagesFromBrowser(&ws)

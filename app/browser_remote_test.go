@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 type TestResponderToBrowser struct {
@@ -25,6 +26,19 @@ func (resp *TestResponderToBrowser) HandleMessage(incomingMsg web_server.Outgoin
 	resp.messages <- incomingMsg
 }
 
+type TestTimer struct {
+	timer chan time.Time
+}
+
+func (timer *TestTimer) StartTimer(time.Duration) <-chan time.Time {
+	timer.timer = make(chan time.Time)
+	return timer.timer
+}
+
+func (timer *TestTimer) FireTimer() {
+	timer.timer <- time.Now()
+}
+
 type TestBrowserRemote struct {
 	logger           logger.Logger
 	inputReader      *io.PipeReader
@@ -34,6 +48,7 @@ type TestBrowserRemote struct {
 	native           *native_messaging.NativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage]
 	browser          *native_messaging.NativeMessaging[web_server.OutgoingBrowserMessage, web_server.IncomingBrowserMessage]
 	ws               *web_server.WebServer
+	timer            *TestTimer
 	browserResponder *TestResponderToBrowser
 	nativeDone       chan bool
 	browserDone      chan bool
@@ -51,7 +66,9 @@ func NewTestBrowserRemote() TestBrowserRemote {
 	native := native_messaging.NewNativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage](&logger, inputReader, outputWriter)
 	browser := native_messaging.NewNativeMessaging[web_server.OutgoingBrowserMessage, web_server.IncomingBrowserMessage](&logger, outputReader, inputWriter)
 
-	ws := web_server.NewWebServer(&logger, "localhost", 5555, &native)
+	timer := TestTimer{}
+
+	ws := web_server.NewWebServer(&logger, "localhost", 5555, &native, &timer)
 
 	browserResponder := NewTestResponderToBrowser()
 
@@ -67,6 +84,7 @@ func NewTestBrowserRemote() TestBrowserRemote {
 		native:           &native,
 		browser:          &browser,
 		ws:               &ws,
+		timer:            &timer,
 		browserResponder: &browserResponder,
 		nativeDone:       nativeDone,
 		browserDone:      browserDone,
@@ -93,6 +111,10 @@ func (br *TestBrowserRemote) SendWebRequest(s string) {
 		br.ws.HandlePost(br.recorder, req)
 		br.postDone <- true
 	}()
+}
+
+func (br *TestBrowserRemote) TimeoutWebRequest() {
+	br.timer.FireTimer()
 }
 
 func (br *TestBrowserRemote) AssertBrowserReceivedQuery(s string, t *testing.T) string {
@@ -156,6 +178,16 @@ func TestWebServer(t *testing.T) {
 		id := br.AssertBrowserReceivedQuery("name", t)
 		br.SendBrowserResponse(id, "error", "")
 		br.AssertWebResponse("{\"status\":\"error\",\"result\":\"\"}\n", t)
+		br.Cleanup()
+	})
+
+	t.Run("responds with timeout error", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		br.SendWebRequest("{\"query\":\"name\"}")
+		br.AssertBrowserReceivedQuery("name", t)
+		br.TimeoutWebRequest()
+		br.AssertWebResponse("{\"status\":\"timeout\",\"result\":null}\n", t)
 		br.Cleanup()
 	})
 }
