@@ -25,7 +25,23 @@ func (resp *TestResponderToBrowser) HandleMessage(incomingMsg web_server.Outgoin
 	resp.messages <- incomingMsg
 }
 
-func TestWebServer(t *testing.T) {
+type TestBrowserRemote struct {
+	logger           logger.Logger
+	inputReader      *io.PipeReader
+	inputWriter      *io.PipeWriter
+	outputReader     *io.PipeReader
+	outputWriter     *io.PipeWriter
+	native           *native_messaging.NativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage]
+	browser          *native_messaging.NativeMessaging[web_server.OutgoingBrowserMessage, web_server.IncomingBrowserMessage]
+	ws               *web_server.WebServer
+	browserResponder *TestResponderToBrowser
+	nativeDone       chan bool
+	browserDone      chan bool
+	postDone         chan bool
+	recorder         *httptest.ResponseRecorder
+}
+
+func NewTestBrowserRemote() TestBrowserRemote {
 	logger := logger.NewStdoutLogger()
 
 	inputReader, inputWriter := io.Pipe()
@@ -41,32 +57,56 @@ func TestWebServer(t *testing.T) {
 
 	nativeDone := make(chan bool)
 	browserDone := make(chan bool)
+
+	return TestBrowserRemote{
+		logger:           logger,
+		inputReader:      inputReader,
+		inputWriter:      inputWriter,
+		outputReader:     outputReader,
+		outputWriter:     outputWriter,
+		native:           &native,
+		browser:          &browser,
+		ws:               &ws,
+		browserResponder: &browserResponder,
+		nativeDone:       nativeDone,
+		browserDone:      browserDone,
+	}
+}
+
+func (br *TestBrowserRemote) Start() {
 	go func() {
-		native.ReadMessagesFromBrowser(&ws)
-		nativeDone <- true
+		br.native.ReadMessagesFromBrowser(br.ws)
+		br.nativeDone <- true
 	}()
 	go func() {
-		browser.ReadMessagesFromBrowser(&browserResponder)
-		browserDone <- true
+		br.browser.ReadMessagesFromBrowser(br.browserResponder)
+		br.browserDone <- true
 	}()
+}
 
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{ \"query\": \"name\" }"))
-	recorder := httptest.NewRecorder()
+func (br *TestBrowserRemote) SendWebRequest(s string) {
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(s))
+	br.recorder = httptest.NewRecorder()
 
-	postDone := make(chan bool)
+	br.postDone = make(chan bool)
 	go func() {
-		ws.HandlePost(recorder, req)
-		postDone <- true
+		br.ws.HandlePost(br.recorder, req)
+		br.postDone <- true
 	}()
+}
 
-	msgToBrowser := <-browserResponder.messages
-	if msgToBrowser.Query != "name" {
+func (br *TestBrowserRemote) AssertBrowserReceivedQueryAndRespond(s string, status string, result string, t *testing.T) {
+	msgToBrowser := <-br.browserResponder.messages
+	if msgToBrowser.Query != s {
 		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Query)
 	}
-	browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: msgToBrowser.Id, Status: "ok", Result: "john"})
 
-	<-postDone
-	resp := recorder.Result()
+	br.browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: msgToBrowser.Id, Status: status, Result: result})
+}
+
+func (br *TestBrowserRemote) AssertWebResponse(s string, t *testing.T) {
+	<-br.postDone
+	resp := br.recorder.Result()
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
@@ -75,9 +115,20 @@ func TestWebServer(t *testing.T) {
 	if string(body) != "{\"status\":\"ok\",\"result\":\"john\"}\n" {
 		t.Errorf("invalid response received from web server: %v", string(body))
 	}
+}
 
-	inputWriter.Close()
-	outputWriter.Close()
-	<-nativeDone
-	<-browserDone
+func (br *TestBrowserRemote) Cleanup() {
+	br.inputWriter.Close()
+	br.outputWriter.Close()
+	<-br.nativeDone
+	<-br.browserDone
+}
+
+func TestWebServer(t *testing.T) {
+	br := NewTestBrowserRemote()
+	br.Start()
+	br.SendWebRequest("{\"query\":\"name\"}")
+	br.AssertBrowserReceivedQueryAndRespond("name", "ok", "john", t)
+	br.AssertWebResponse("{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+	br.Cleanup()
 }
