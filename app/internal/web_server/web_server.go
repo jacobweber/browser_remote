@@ -47,22 +47,26 @@ type WebServer struct {
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
 	browserResponders map[string]chan IncomingBrowserMessage
 	sender            BrowserSender
+	server            *http.ServeMux
 }
 
-func NewWebServer(logger *logger.Logger, host string, port int) WebServer {
-	return WebServer{
+func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender) WebServer {
+	server := http.NewServeMux()
+	ws := WebServer{
 		logger:            logger,
 		host:              host,
 		port:              port,
 		browserResponders: make(map[string]chan IncomingBrowserMessage),
+		sender:            sender,
+		server:            server,
 	}
+	ws.server.Handle("/", http.HandlerFunc(ws.HandlePost))
+	return ws
 }
 
-func (ws *WebServer) Start(sender BrowserSender) {
-	ws.sender = sender // TODO: improve
-	http.Handle("/", http.HandlerFunc(ws.handlePost))
+func (ws *WebServer) Start() {
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf("%v:%v", ws.host, ws.port), nil)
+		err := http.ListenAndServe(fmt.Sprintf("%v:%v", ws.host, ws.port), ws.server)
 		if err != nil {
 			ws.logger.Error.Printf("Unable to open HTTP server: %v", err)
 		}
@@ -80,7 +84,7 @@ func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
 	}
 }
 
-func (ws *WebServer) handlePost(w http.ResponseWriter, req *http.Request) {
+func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
 		ws.logger.Error.Printf("Invalid path %v", req.URL.Path)
 		respondJson(w, http.StatusNotFound, OutgoingHttpMessage{Status: "not found"})

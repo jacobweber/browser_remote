@@ -1,0 +1,56 @@
+package web_server
+
+import (
+	"example/remote/internal/logger"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+type TestBrowserSender struct {
+	messages chan OutgoingBrowserMessage
+}
+
+func NewTestBrowserSender() TestBrowserSender {
+	return TestBrowserSender{
+		messages: make(chan OutgoingBrowserMessage),
+	}
+}
+
+func (resp *TestBrowserSender) SendToBrowser(msg OutgoingBrowserMessage) {
+	resp.messages <- msg
+}
+
+func TestWebServer(t *testing.T) {
+	logger := logger.NewStdoutLogger()
+	sender := NewTestBrowserSender()
+	ws := NewWebServer(&logger, "localhost", 5555, &sender)
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{ \"query\": \"name\" }"))
+	recorder := httptest.NewRecorder()
+
+	postDone := make(chan bool)
+	go func() {
+		ws.HandlePost(recorder, req)
+		postDone <- true
+	}()
+
+	msg := <-sender.messages
+	if msg.Query != "name" {
+		t.Errorf("invalid message sent to web server: %v", msg.Query)
+	}
+	ws.HandleMessage(IncomingBrowserMessage{Id: msg.Id, Status: "ok", Result: "john"})
+
+	<-postDone
+	resp := recorder.Result()
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+	if string(body) != "{\"status\":\"ok\",\"result\":\"john\"}\n" {
+		t.Errorf("invalid response received from web server: %v", string(body))
+	}
+}

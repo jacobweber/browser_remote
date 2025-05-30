@@ -2,7 +2,6 @@ package native_messaging
 
 import (
 	"example/remote/internal/logger"
-	"fmt"
 	"io"
 	"testing"
 )
@@ -26,7 +25,6 @@ func NewTestResponderFromBrowser() TestResponderFromBrowser {
 }
 
 func (resp *TestResponderFromBrowser) HandleMessage(incomingMsg TestMessageFromBrowser) {
-	fmt.Printf("Native responder got message: %v", incomingMsg.Answer)
 	resp.messages <- incomingMsg
 }
 
