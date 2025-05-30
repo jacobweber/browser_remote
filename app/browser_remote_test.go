@@ -95,13 +95,16 @@ func (br *TestBrowserRemote) SendWebRequest(s string) {
 	}()
 }
 
-func (br *TestBrowserRemote) AssertBrowserReceivedQueryAndRespond(s string, status string, result string, t *testing.T) {
+func (br *TestBrowserRemote) AssertBrowserReceivedQuery(s string, t *testing.T) string {
 	msgToBrowser := <-br.browserResponder.messages
 	if msgToBrowser.Query != s {
 		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Query)
 	}
+	return msgToBrowser.Id
+}
 
-	br.browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: msgToBrowser.Id, Status: status, Result: result})
+func (br *TestBrowserRemote) SendBrowserResponse(id string, status string, result string) {
+	br.browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: id, Status: status, Result: result})
 }
 
 func (br *TestBrowserRemote) AssertWebResponse(s string, t *testing.T) {
@@ -112,7 +115,7 @@ func (br *TestBrowserRemote) AssertWebResponse(s string, t *testing.T) {
 	if err != nil {
 		t.Errorf("expected error to be nil got %v", err)
 	}
-	if string(body) != "{\"status\":\"ok\",\"result\":\"john\"}\n" {
+	if string(body) != s {
 		t.Errorf("invalid response received from web server: %v", string(body))
 	}
 }
@@ -125,10 +128,34 @@ func (br *TestBrowserRemote) Cleanup() {
 }
 
 func TestWebServer(t *testing.T) {
-	br := NewTestBrowserRemote()
-	br.Start()
-	br.SendWebRequest("{\"query\":\"name\"}")
-	br.AssertBrowserReceivedQueryAndRespond("name", "ok", "john", t)
-	br.AssertWebResponse("{\"status\":\"ok\",\"result\":\"john\"}\n", t)
-	br.Cleanup()
+	t.Run("responds to test", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		br.SendWebRequest("{\"query\":\"name\"}")
+		id := br.AssertBrowserReceivedQuery("name", t)
+		br.SendBrowserResponse(id, "ok", "john")
+		br.AssertWebResponse("{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.Cleanup()
+	})
+
+	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		br.SendWebRequest("{\"query\":\"name\"}")
+		id := br.AssertBrowserReceivedQuery("name", t)
+		br.SendBrowserResponse("xxx", "ok", "jim")
+		br.SendBrowserResponse(id, "ok", "john")
+		br.AssertWebResponse("{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.Cleanup()
+	})
+
+	t.Run("responds with browser error", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		br.SendWebRequest("{\"query\":\"name\"}")
+		id := br.AssertBrowserReceivedQuery("name", t)
+		br.SendBrowserResponse(id, "error", "")
+		br.AssertWebResponse("{\"status\":\"error\",\"result\":\"\"}\n", t)
+		br.Cleanup()
+	})
 }
