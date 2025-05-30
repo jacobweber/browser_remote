@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"example/remote/internal/logger"
 	"io"
-	"os"
 	"unsafe"
 )
 
@@ -18,6 +17,10 @@ type Responder[I any] interface {
 type NativeMessaging[I any, O any] struct {
 	logger *logger.Logger
 
+	inputHandle io.Reader
+
+	outputHandle io.Writer
+
 	// bufferSize used to set size of IO buffer - adjust to accommodate message payloads
 	bufferSize int
 
@@ -25,9 +28,11 @@ type NativeMessaging[I any, O any] struct {
 	nativeEndian binary.ByteOrder
 }
 
-func NewNativeMessaging[I any, O any](logger *logger.Logger) NativeMessaging[I, O] {
+func NewNativeMessaging[I any, O any](logger *logger.Logger, inputHandle io.Reader, outputHandle io.Writer) NativeMessaging[I, O] {
 	return NativeMessaging[I, O]{
 		logger:       logger,
+		inputHandle:  inputHandle,
+		outputHandle: outputHandle,
 		bufferSize:   8192,
 		nativeEndian: determineByteOrder(),
 	}
@@ -44,11 +49,11 @@ func determineByteOrder() binary.ByteOrder {
 	}
 }
 
-// ReadMessagesFromBrowser creates a new buffered I/O reader and reads messages from Stdin.
+// ReadMessagesFromBrowser creates a new buffered I/O reader and reads messages from inputFile.
 func (nm *NativeMessaging[I, O]) ReadMessagesFromBrowser(responder Responder[I]) {
 	nm.logger.Trace.Printf("Chrome native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
-	v := bufio.NewReader(os.Stdin)
+	v := bufio.NewReader(nm.inputHandle)
 	// adjust buffer size to accommodate your json payload size limits; default is 4096
 	s := bufio.NewReaderSize(v, nm.bufferSize)
 	nm.logger.Trace.Printf("IO buffer reader created with buffer size of %v.", s.Size())
@@ -112,7 +117,7 @@ func (nm *NativeMessaging[I, O]) decodeMessageFromBrowser(msg []byte) I {
 	return incomingMsg
 }
 
-// sendToBrowser sends an outgoing message to os.Stdout.
+// sendToBrowser sends an outgoing message to outputFile.
 func (nm *NativeMessaging[I, O]) SendToBrowser(msg O) {
 	byteMsg := nm.dataToBytes(msg)
 	nm.writeMessageLength(byteMsg)
@@ -123,10 +128,12 @@ func (nm *NativeMessaging[I, O]) SendToBrowser(msg O) {
 		nm.logger.Error.Printf("Unable to write message length to message buffer: %v", err)
 	}
 
-	_, err = msgBuf.WriteTo(os.Stdout)
+	_, err = msgBuf.WriteTo(nm.outputHandle)
 	if err != nil {
 		nm.logger.Error.Printf("Unable to write message buffer to Stdout: %v", err)
 	}
+
+	nm.logger.Trace.Printf("Message sent to browser: %s", byteMsg)
 }
 
 // dataToBytes marshals an outcoming message struct to slice of bytes
@@ -138,9 +145,9 @@ func (nm *NativeMessaging[I, O]) dataToBytes(msg O) []byte {
 	return byteMsg
 }
 
-// writeMessageLength determines length of message and writes it to os.Stdout.
+// writeMessageLength determines length of message and writes it to outputFile.
 func (nm *NativeMessaging[I, O]) writeMessageLength(msg []byte) {
-	err := binary.Write(os.Stdout, nm.nativeEndian, uint32(len(msg)))
+	err := binary.Write(nm.outputHandle, nm.nativeEndian, uint32(len(msg)))
 	if err != nil {
 		nm.logger.Error.Printf("Unable to write message length to Stdout: %v", err)
 	}

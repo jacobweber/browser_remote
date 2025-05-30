@@ -30,7 +30,7 @@ import (
 )
 
 func main() {
-	logger := logger.NewLogger()
+	logger := logger.NewFileLogger()
 	defer logger.Cleanup()
 
 	host := flag.String("host", "localhost", "web server hostname")
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	ws := web_server.NewWebServer(&logger, *host, openPort)
-	nm := native_messaging.NewNativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage](&logger)
+	nm := native_messaging.NewNativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage](&logger, os.Stdin, os.Stdout)
 
 	ws.Start(&nm)
 	nm.ReadMessagesFromBrowser(&ws)
