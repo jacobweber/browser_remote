@@ -100,6 +100,10 @@ func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
 	}
 }
 
+func (ws *WebServer) ServeHttp(w http.ResponseWriter, req *http.Request) {
+	ws.server.ServeHTTP(w, req)
+}
+
 func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
 		ws.logger.Error.Printf("Invalid path %v", req.URL.Path)

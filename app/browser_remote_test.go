@@ -108,7 +108,7 @@ func (br *TestBrowserRemote) SendWebRequest(s string) {
 
 	br.postDone = make(chan bool)
 	go func() {
-		br.ws.HandlePost(br.recorder, req)
+		br.ws.ServeHttp(br.recorder, req)
 		br.postDone <- true
 	}()
 }

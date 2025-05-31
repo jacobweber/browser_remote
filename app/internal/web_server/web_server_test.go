@@ -33,7 +33,7 @@ func TestWebServer(t *testing.T) {
 
 	postDone := make(chan bool)
 	go func() {
-		ws.HandlePost(recorder, req)
+		ws.ServeHttp(recorder, req)
 		postDone <- true
 	}()
 
