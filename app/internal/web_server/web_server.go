@@ -3,9 +3,9 @@ package web_server
 import (
 	"encoding/json"
 	"example/remote/internal/logger"
+	mutex_map "example/remote/internal/utils"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,42 +54,12 @@ func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
 	return time.After(dur)
 }
 
-type BrowserResponders struct {
-	mutex sync.Mutex
-	// Map UUIDs of HTTP requests to a channel where we send their browser response.
-	responders map[string]chan IncomingBrowserMessage
-}
-
-func NewBrowserResponders() *BrowserResponders {
-	return &BrowserResponders{
-		mutex:      sync.Mutex{},
-		responders: make(map[string]chan IncomingBrowserMessage),
-	}
-}
-
-func (res *BrowserResponders) Get(id string) chan IncomingBrowserMessage {
-	res.mutex.Lock()
-	defer res.mutex.Unlock()
-	return res.responders[id]
-}
-
-func (res *BrowserResponders) Set(id string, ch chan IncomingBrowserMessage) {
-	res.mutex.Lock()
-	defer res.mutex.Unlock()
-	res.responders[id] = ch
-}
-
-func (res *BrowserResponders) Delete(id string) {
-	res.mutex.Lock()
-	defer res.mutex.Unlock()
-	delete(res.responders, id)
-}
-
 type WebServer struct {
-	logger            *logger.Logger
-	host              string
-	port              int
-	browserResponders *BrowserResponders
+	logger *logger.Logger
+	host   string
+	port   int
+	// Map UUIDs of HTTP requests to a channel where we send their browser response.
+	browserResponders *mutex_map.MutexMap[string, chan IncomingBrowserMessage]
 	sender            BrowserSender
 	server            *http.ServeMux
 }
@@ -100,7 +70,7 @@ func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSe
 		logger:            logger,
 		host:              host,
 		port:              port,
-		browserResponders: NewBrowserResponders(),
+		browserResponders: mutex_map.NewMap[string, chan IncomingBrowserMessage](),
 		sender:            sender,
 		server:            server,
 	}
