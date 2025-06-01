@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -147,7 +149,7 @@ func (br *TestBrowserRemote) Cleanup() {
 	<-br.browserDone
 }
 
-func TestWebServer(t *testing.T) {
+func TestApp(t *testing.T) {
 	t.Run("responds to test", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
@@ -206,6 +208,29 @@ func TestWebServer(t *testing.T) {
 		br.SendBrowserResponse(msg1.Id, "ok", "john")
 		br.AssertWebResponse(postDone1, recorder1, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
 		br.AssertWebResponse(postDone2, recorder2, "{\"status\":\"ok\",\"result\":\"31\"}\n", t)
+		br.Cleanup()
+	})
+
+	t.Run("handles parallel calls", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		doRequest := func(id string) {
+			listener := br.ListenForBrowserToReceiveQuery("name" + id)
+			postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name" + id + "\"}")
+			msg := <-listener
+			br.SendBrowserResponse(msg.Id, "ok", "john"+id)
+			br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john"+id+"\"}\n", t)
+		}
+		var wg sync.WaitGroup
+		for val := range 10 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				doRequest(strconv.Itoa(val))
+			}()
+		}
+
+		wg.Wait()
 		br.Cleanup()
 	})
 }

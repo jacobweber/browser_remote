@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"example/remote/internal/logger"
 	"io"
+	"sync"
 	"unsafe"
 )
 
@@ -20,6 +21,8 @@ type NativeMessaging[I any, O any] struct {
 	inputHandle io.Reader
 
 	outputHandle io.Writer
+
+	writeMutex sync.Mutex
 
 	// bufferSize used to set size of IO buffer - adjust to accommodate message payloads
 	bufferSize int
@@ -119,6 +122,9 @@ func (nm *NativeMessaging[I, O]) decodeMessageFromBrowser(msg []byte) I {
 
 // sendToBrowser sends an outgoing message to outputFile.
 func (nm *NativeMessaging[I, O]) SendToBrowser(msg O) {
+	nm.writeMutex.Lock()
+	defer nm.writeMutex.Unlock()
+
 	byteMsg := nm.dataToBytes(msg)
 	nm.writeMessageLength(byteMsg)
 
