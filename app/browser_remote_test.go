@@ -52,7 +52,6 @@ type TestBrowserRemote struct {
 	browserResponder *TestResponderToBrowser
 	nativeDone       chan bool
 	browserDone      chan bool
-	recorder         *httptest.ResponseRecorder
 }
 
 func NewTestBrowserRemote() TestBrowserRemote {
@@ -98,17 +97,17 @@ func (br *TestBrowserRemote) Start() {
 	}()
 }
 
-func (br *TestBrowserRemote) SendWebRequest(s string) (postDone chan bool, timeout *TestTimer) {
+func (br *TestBrowserRemote) SendWebRequest(s string) (postDone chan bool, recorder *httptest.ResponseRecorder, timeout *TestTimer) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(s))
 	timeout = &TestTimer{}
 	ctx := context.WithValue(req.Context(), web_server.TimerKey{}, timeout)
 	req = req.WithContext(ctx)
 
-	br.recorder = httptest.NewRecorder()
+	recorder = httptest.NewRecorder()
 
 	postDone = make(chan bool)
 	go func() {
-		br.ws.ServeHttp(br.recorder, req)
+		br.ws.ServeHttp(recorder, req)
 		postDone <- true
 	}()
 	return
@@ -126,9 +125,9 @@ func (br *TestBrowserRemote) SendBrowserResponse(id string, status string, resul
 	br.browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: id, Status: status, Result: result})
 }
 
-func (br *TestBrowserRemote) AssertWebResponse(postDone <-chan bool, s string, t *testing.T) {
+func (br *TestBrowserRemote) AssertWebResponse(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {
 	<-postDone
-	resp := br.recorder.Result()
+	resp := recorder.Result()
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
@@ -150,41 +149,41 @@ func TestWebServer(t *testing.T) {
 	t.Run("responds to test", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
-		postDone, _ := br.SendWebRequest("{\"query\":\"name\"}")
+		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
 		id := br.AssertBrowserReceivedQuery("name", t)
 		br.SendBrowserResponse(id, "ok", "john")
-		br.AssertWebResponse(postDone, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
 		br.Cleanup()
 	})
 
 	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
-		postDone, _ := br.SendWebRequest("{\"query\":\"name\"}")
+		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
 		id := br.AssertBrowserReceivedQuery("name", t)
 		br.SendBrowserResponse("xxx", "ok", "jim")
 		br.SendBrowserResponse(id, "ok", "john")
-		br.AssertWebResponse(postDone, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
 		br.Cleanup()
 	})
 
 	t.Run("responds with browser error", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
-		postDone, _ := br.SendWebRequest("{\"query\":\"name\"}")
+		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
 		id := br.AssertBrowserReceivedQuery("name", t)
 		br.SendBrowserResponse(id, "error", "")
-		br.AssertWebResponse(postDone, "{\"status\":\"error\",\"result\":\"\"}\n", t)
+		br.AssertWebResponse(postDone, recorder, "{\"status\":\"error\",\"result\":\"\"}\n", t)
 		br.Cleanup()
 	})
 
 	t.Run("responds with timeout error", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
-		postDone, timeout := br.SendWebRequest("{\"query\":\"name\"}")
+		postDone, recorder, timeout := br.SendWebRequest("{\"query\":\"name\"}")
 		br.AssertBrowserReceivedQuery("name", t)
 		timeout.FireTimer()
-		br.AssertWebResponse(postDone, "{\"status\":\"timeout\",\"result\":null}\n", t)
+		br.AssertWebResponse(postDone, recorder, "{\"status\":\"timeout\",\"result\":null}\n", t)
 		br.Cleanup()
 	})
 }
