@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"example/remote/internal/logger"
+	"example/remote/internal/mutex_map"
 	"example/remote/internal/native_messaging"
 	"example/remote/internal/web_server"
 	"io"
@@ -14,17 +15,20 @@ import (
 )
 
 type TestResponderToBrowser struct {
-	messages chan web_server.OutgoingBrowserMessage
+	queryListeners *mutex_map.MutexMap[string, chan web_server.OutgoingBrowserMessage]
 }
 
 func NewTestResponderToBrowser() TestResponderToBrowser {
 	return TestResponderToBrowser{
-		messages: make(chan web_server.OutgoingBrowserMessage),
+		queryListeners: mutex_map.NewMap[string, chan web_server.OutgoingBrowserMessage](),
 	}
 }
 
 func (resp *TestResponderToBrowser) HandleMessage(incomingMsg web_server.OutgoingBrowserMessage) {
-	resp.messages <- incomingMsg
+	listener := resp.queryListeners.Get(incomingMsg.Query)
+	if listener != nil {
+		listener <- incomingMsg
+	}
 }
 
 type TestTimer struct {
@@ -113,12 +117,10 @@ func (br *TestBrowserRemote) SendWebRequest(s string) (postDone chan bool, recor
 	return
 }
 
-func (br *TestBrowserRemote) AssertBrowserReceivedQuery(s string, t *testing.T) string {
-	msgToBrowser := <-br.browserResponder.messages
-	if msgToBrowser.Query != s {
-		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Query)
-	}
-	return msgToBrowser.Id
+func (br *TestBrowserRemote) ListenForBrowserToReceiveQuery(s string) chan web_server.OutgoingBrowserMessage {
+	ch := make(chan web_server.OutgoingBrowserMessage)
+	br.browserResponder.queryListeners.Set(s, ch)
+	return ch
 }
 
 func (br *TestBrowserRemote) SendBrowserResponse(id string, status string, result string) {
@@ -149,9 +151,10 @@ func TestWebServer(t *testing.T) {
 	t.Run("responds to test", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
+		listener := br.ListenForBrowserToReceiveQuery("name")
 		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
-		id := br.AssertBrowserReceivedQuery("name", t)
-		br.SendBrowserResponse(id, "ok", "john")
+		msg := <-listener
+		br.SendBrowserResponse(msg.Id, "ok", "john")
 		br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
 		br.Cleanup()
 	})
@@ -159,10 +162,11 @@ func TestWebServer(t *testing.T) {
 	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
+		listener := br.ListenForBrowserToReceiveQuery("name")
 		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
-		id := br.AssertBrowserReceivedQuery("name", t)
+		msg := <-listener
 		br.SendBrowserResponse("xxx", "ok", "jim")
-		br.SendBrowserResponse(id, "ok", "john")
+		br.SendBrowserResponse(msg.Id, "ok", "john")
 		br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
 		br.Cleanup()
 	})
@@ -170,9 +174,10 @@ func TestWebServer(t *testing.T) {
 	t.Run("responds with browser error", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
+		listener := br.ListenForBrowserToReceiveQuery("name")
 		postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name\"}")
-		id := br.AssertBrowserReceivedQuery("name", t)
-		br.SendBrowserResponse(id, "error", "")
+		msg := <-listener
+		br.SendBrowserResponse(msg.Id, "error", "")
 		br.AssertWebResponse(postDone, recorder, "{\"status\":\"error\",\"result\":\"\"}\n", t)
 		br.Cleanup()
 	})
@@ -180,10 +185,27 @@ func TestWebServer(t *testing.T) {
 	t.Run("responds with timeout error", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
+		listener := br.ListenForBrowserToReceiveQuery("name")
 		postDone, recorder, timeout := br.SendWebRequest("{\"query\":\"name\"}")
-		br.AssertBrowserReceivedQuery("name", t)
+		<-listener
 		timeout.FireTimer()
 		br.AssertWebResponse(postDone, recorder, "{\"status\":\"timeout\",\"result\":null}\n", t)
+		br.Cleanup()
+	})
+
+	t.Run("handles overlapping calls", func(t *testing.T) {
+		br := NewTestBrowserRemote()
+		br.Start()
+		listener2 := br.ListenForBrowserToReceiveQuery("age")
+		listener1 := br.ListenForBrowserToReceiveQuery("name")
+		postDone1, recorder1, _ := br.SendWebRequest("{\"query\":\"name\"}")
+		postDone2, recorder2, _ := br.SendWebRequest("{\"query\":\"age\"}")
+		msg2 := <-listener2
+		msg1 := <-listener1
+		br.SendBrowserResponse(msg2.Id, "ok", "31")
+		br.SendBrowserResponse(msg1.Id, "ok", "john")
+		br.AssertWebResponse(postDone1, recorder1, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.AssertWebResponse(postDone2, recorder2, "{\"status\":\"ok\",\"result\":\"31\"}\n", t)
 		br.Cleanup()
 	})
 }
