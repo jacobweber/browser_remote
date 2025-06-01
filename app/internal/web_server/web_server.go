@@ -3,7 +3,7 @@ package web_server
 import (
 	"encoding/json"
 	"example/remote/internal/logger"
-	mutex_map "example/remote/internal/utils"
+	"example/remote/internal/mutex_map"
 	"fmt"
 	"net/http"
 	"time"
