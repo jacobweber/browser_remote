@@ -5,6 +5,7 @@ import (
 	"example/remote/internal/logger"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,12 +54,42 @@ func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
 	return time.After(dur)
 }
 
-type WebServer struct {
-	logger *logger.Logger
-	host   string
-	port   int
+type BrowserResponders struct {
+	mutex sync.Mutex
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
-	browserResponders map[string]chan IncomingBrowserMessage
+	responders map[string]chan IncomingBrowserMessage
+}
+
+func NewBrowserResponders() *BrowserResponders {
+	return &BrowserResponders{
+		mutex:      sync.Mutex{},
+		responders: make(map[string]chan IncomingBrowserMessage),
+	}
+}
+
+func (res *BrowserResponders) Get(id string) chan IncomingBrowserMessage {
+	res.mutex.Lock()
+	defer res.mutex.Unlock()
+	return res.responders[id]
+}
+
+func (res *BrowserResponders) Set(id string, ch chan IncomingBrowserMessage) {
+	res.mutex.Lock()
+	defer res.mutex.Unlock()
+	res.responders[id] = ch
+}
+
+func (res *BrowserResponders) Delete(id string) {
+	res.mutex.Lock()
+	defer res.mutex.Unlock()
+	delete(res.responders, id)
+}
+
+type WebServer struct {
+	logger            *logger.Logger
+	host              string
+	port              int
+	browserResponders *BrowserResponders
 	sender            BrowserSender
 	server            *http.ServeMux
 }
@@ -69,7 +100,7 @@ func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSe
 		logger:            logger,
 		host:              host,
 		port:              port,
-		browserResponders: make(map[string]chan IncomingBrowserMessage),
+		browserResponders: NewBrowserResponders(),
 		sender:            sender,
 		server:            server,
 	}
@@ -89,7 +120,7 @@ func (ws *WebServer) Start() {
 
 func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
 	if incomingMsg.Id != "" {
-		responder := ws.browserResponders[incomingMsg.Id]
+		responder := ws.browserResponders.Get(incomingMsg.Id)
 		if responder != nil {
 			ws.logger.Trace.Printf("Message received from browser for ID: %v", incomingMsg.Id)
 			responder <- incomingMsg
@@ -127,8 +158,8 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	// send message to browser with a random ID, and listen for messages from browser with that ID
 	uuid := uuid.NewString()
 	browserResponder := make(chan IncomingBrowserMessage)
-	ws.browserResponders[uuid] = browserResponder
-	defer delete(ws.browserResponders, uuid)
+	ws.browserResponders.Set(uuid, browserResponder)
+	defer ws.browserResponders.Delete(uuid)
 	ws.sender.SendToBrowser(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
 
 	var timer Timer
