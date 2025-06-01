@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+type TimerKey struct{}
+
 const browserTimeoutSecs = 5
 
 // IncomingBrowserMessage represents a message from the browser to the native host.
@@ -59,21 +61,16 @@ type WebServer struct {
 	browserResponders map[string]chan IncomingBrowserMessage
 	sender            BrowserSender
 	server            *http.ServeMux
-	timer             Timer
 }
 
-func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender, timer Timer) WebServer {
+func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender) WebServer {
 	server := http.NewServeMux()
-	if timer == nil {
-		timer = &RealTimer{}
-	}
 	ws := WebServer{
 		logger:            logger,
 		host:              host,
 		port:              port,
 		browserResponders: make(map[string]chan IncomingBrowserMessage),
 		sender:            sender,
-		timer:             timer,
 		server:            server,
 	}
 	ws.server.Handle("/", http.HandlerFunc(ws.HandlePost))
@@ -134,11 +131,17 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	defer delete(ws.browserResponders, uuid)
 	ws.sender.SendToBrowser(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
 
+	var timer Timer
+	timer, ok := req.Context().Value(TimerKey{}).(Timer)
+	if !ok {
+		timer = &RealTimer{}
+	}
+
 	// wait for a browser message or a timeout
 	select {
 	case browserResponse := <-browserResponder:
 		respondJson(w, http.StatusOK, OutgoingHttpMessage{Status: browserResponse.Status, Result: browserResponse.Result})
-	case <-ws.timer.StartTimer(browserTimeoutSecs * time.Second):
+	case <-timer.StartTimer(browserTimeoutSecs * time.Second):
 		ws.logger.Error.Printf("Timeout responding to request ID %v", uuid)
 		respondJson(w, http.StatusInternalServerError, OutgoingHttpMessage{Status: "timeout"})
 	}
