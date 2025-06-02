@@ -39,7 +39,7 @@ type OutgoingHttpMessage struct {
 	Result any    `json:"result"`
 }
 
-type BrowserSender interface {
+type SenderToBrowser interface {
 	SendMessage(msg OutgoingBrowserMessage)
 }
 
@@ -60,11 +60,11 @@ type WebServer struct {
 	port   int
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
 	browserResponders *mutex_map.MutexMap[string, chan IncomingBrowserMessage]
-	sender            BrowserSender
+	sender            SenderToBrowser
 	server            *http.ServeMux
 }
 
-func NewWebServer(logger *logger.Logger, host string, port int, sender BrowserSender) WebServer {
+func NewWebServer(logger *logger.Logger, host string, port int, sender SenderToBrowser) WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
 		logger:            logger,

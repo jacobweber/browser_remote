@@ -9,23 +9,23 @@ import (
 	"testing"
 )
 
-type TestBrowserSender struct {
+type TestSenderToBrowser struct {
 	messages chan OutgoingBrowserMessage
 }
 
-func NewTestBrowserSender() TestBrowserSender {
-	return TestBrowserSender{
+func NewTestSenderToBrowser() TestSenderToBrowser {
+	return TestSenderToBrowser{
 		messages: make(chan OutgoingBrowserMessage),
 	}
 }
 
-func (resp *TestBrowserSender) SendMessage(msg OutgoingBrowserMessage) {
+func (resp *TestSenderToBrowser) SendMessage(msg OutgoingBrowserMessage) {
 	resp.messages <- msg
 }
 
 func TestWebServer(t *testing.T) {
 	logger := logger.NewStdoutLogger()
-	sender := NewTestBrowserSender()
+	sender := NewTestSenderToBrowser()
 	ws := NewWebServer(&logger, "localhost", 5555, &sender)
 
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{ \"query\": \"name\" }"))
