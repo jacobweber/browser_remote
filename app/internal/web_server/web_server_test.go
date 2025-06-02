@@ -10,16 +10,16 @@ import (
 )
 
 type TestSenderToBrowser struct {
-	messages chan OutgoingBrowserMessage
+	messages chan MessageToBrowser
 }
 
 func NewTestSenderToBrowser() TestSenderToBrowser {
 	return TestSenderToBrowser{
-		messages: make(chan OutgoingBrowserMessage),
+		messages: make(chan MessageToBrowser),
 	}
 }
 
-func (resp *TestSenderToBrowser) SendMessage(msg OutgoingBrowserMessage) {
+func (resp *TestSenderToBrowser) SendMessage(msg MessageToBrowser) {
 	resp.messages <- msg
 }
 
@@ -41,7 +41,7 @@ func TestWebServer(t *testing.T) {
 	if msg.Query != "name" {
 		t.Errorf("invalid message sent to web server: %v", msg.Query)
 	}
-	ws.HandleMessage(IncomingBrowserMessage{Id: msg.Id, Status: "ok", Result: "john"})
+	ws.HandleMessage(MessageFromBrowser{Id: msg.Id, Status: "ok", Result: "john"})
 
 	<-postDone
 	resp := recorder.Result()

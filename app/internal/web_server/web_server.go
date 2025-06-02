@@ -15,32 +15,32 @@ type TimerKey struct{}
 
 const browserTimeoutSecs = 5
 
-// IncomingBrowserMessage represents a message from the browser to the native host.
-type IncomingBrowserMessage struct {
+// MessageFromBrowser represents a message from the browser to the native host.
+type MessageFromBrowser struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
 	Result any    `json:"result"`
 }
 
-// OutgoingBrowserMessage respresents a response from the native host to the browser.
-type OutgoingBrowserMessage struct {
+// MessageToBrowser respresents a response from the native host to the browser.
+type MessageToBrowser struct {
 	Id    string `json:"id"`
 	Query string `json:"query"`
 }
 
-// IncomingHttpMessage represents a message to the web server.
-type IncomingHttpMessage struct {
+// MessageToWebServer represents a message to the web server.
+type MessageToWebServer struct {
 	Query string `json:"query"`
 }
 
-// OutgoingHttpMessage respresents a response from the web server.
-type OutgoingHttpMessage struct {
+// MessageFromWebServer respresents a response from the web server.
+type MessageFromWebServer struct {
 	Status string `json:"status"`
 	Result any    `json:"result"`
 }
 
 type SenderToBrowser interface {
-	SendMessage(msg OutgoingBrowserMessage)
+	SendMessage(msg MessageToBrowser)
 }
 
 type Timer interface {
@@ -57,7 +57,7 @@ func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
 type WebServer struct {
 	logger *logger.Logger
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
-	browserResponders *mutex_map.MutexMap[string, chan IncomingBrowserMessage]
+	browserResponders *mutex_map.MutexMap[string, chan MessageFromBrowser]
 	sender            SenderToBrowser
 	server            *http.ServeMux
 }
@@ -66,7 +66,7 @@ func NewWebServer(logger *logger.Logger, sender SenderToBrowser) WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
 		logger:            logger,
-		browserResponders: mutex_map.NewMap[string, chan IncomingBrowserMessage](),
+		browserResponders: mutex_map.NewMap[string, chan MessageFromBrowser](),
 		sender:            sender,
 		server:            server,
 	}
@@ -84,7 +84,7 @@ func (ws *WebServer) Start(host string, port int) {
 	ws.logger.Trace.Printf("Opened HTTP server on http://%v:%v", host, port)
 }
 
-func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
+func (ws *WebServer) HandleMessage(incomingMsg MessageFromBrowser) {
 	if incomingMsg.Id != "" {
 		responder := ws.browserResponders.Get(incomingMsg.Id)
 		if responder != nil {
@@ -101,32 +101,32 @@ func (ws *WebServer) ServeHttp(w http.ResponseWriter, req *http.Request) {
 func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
 		ws.logger.Error.Printf("Invalid path %v", req.URL.Path)
-		respondJson(w, http.StatusNotFound, OutgoingHttpMessage{Status: "not found"})
+		respondJson(w, http.StatusNotFound, MessageFromWebServer{Status: "not found"})
 		return
 	}
 	if req.Method != "POST" {
 		ws.logger.Error.Printf("Invalid method %v", req.Method)
-		respondJson(w, http.StatusMethodNotAllowed, OutgoingHttpMessage{Status: "invalid method"})
+		respondJson(w, http.StatusMethodNotAllowed, MessageFromWebServer{Status: "invalid method"})
 		return
 	}
 
 	ws.logger.Trace.Printf("Got POST request")
-	var msg IncomingHttpMessage
+	var msg MessageToWebServer
 	decoder := json.NewDecoder(req.Body)
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&msg)
 	if err != nil {
 		ws.logger.Error.Printf("Error parsing POST request: %v", err)
-		respondJson(w, http.StatusBadRequest, OutgoingHttpMessage{Status: "invalid JSON"})
+		respondJson(w, http.StatusBadRequest, MessageFromWebServer{Status: "invalid JSON"})
 		return
 	}
 
 	// send message to browser with a random ID, and listen for messages from browser with that ID
 	uuid := uuid.NewString()
-	browserResponder := make(chan IncomingBrowserMessage)
+	browserResponder := make(chan MessageFromBrowser)
 	ws.browserResponders.Set(uuid, browserResponder)
 	defer ws.browserResponders.Delete(uuid)
-	ws.sender.SendMessage(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
+	ws.sender.SendMessage(MessageToBrowser{Id: uuid, Query: msg.Query})
 
 	var timer Timer
 	timer, ok := req.Context().Value(TimerKey{}).(Timer)
@@ -137,14 +137,14 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	// wait for a browser message or a timeout
 	select {
 	case browserResponse := <-browserResponder:
-		respondJson(w, http.StatusOK, OutgoingHttpMessage{Status: browserResponse.Status, Result: browserResponse.Result})
+		respondJson(w, http.StatusOK, MessageFromWebServer{Status: browserResponse.Status, Result: browserResponse.Result})
 	case <-timer.StartTimer(browserTimeoutSecs * time.Second):
 		ws.logger.Error.Printf("Timeout responding to request ID %v", uuid)
-		respondJson(w, http.StatusInternalServerError, OutgoingHttpMessage{Status: "timeout"})
+		respondJson(w, http.StatusInternalServerError, MessageFromWebServer{Status: "timeout"})
 	}
 }
 
-func respondJson(w http.ResponseWriter, statusCode int, msg OutgoingHttpMessage) {
+func respondJson(w http.ResponseWriter, statusCode int, msg MessageFromWebServer) {
 	w.WriteHeader(statusCode)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(msg)
