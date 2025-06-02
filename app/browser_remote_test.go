@@ -214,22 +214,19 @@ func TestApp(t *testing.T) {
 	t.Run("handles parallel calls", func(t *testing.T) {
 		br := NewTestBrowserRemote()
 		br.Start()
-		doRequest := func(id string) {
-			listener := br.ListenForBrowserToReceiveQuery("name" + id)
-			postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name" + id + "\"}")
-			msg := <-listener
-			br.SendBrowserResponse(msg.Id, "ok", "john"+id)
-			br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john"+id+"\"}\n", t)
-		}
 		var wg sync.WaitGroup
-		for val := range 10 {
+		for idInt := range 10 {
 			wg.Add(1)
 			go func() {
+				id := strconv.Itoa(idInt)
 				defer wg.Done()
-				doRequest(strconv.Itoa(val))
+				listener := br.ListenForBrowserToReceiveQuery("name" + id)
+				postDone, recorder, _ := br.SendWebRequest("{\"query\":\"name" + id + "\"}")
+				msg := <-listener
+				br.SendBrowserResponse(msg.Id, "ok", "john"+id)
+				br.AssertWebResponse(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john"+id+"\"}\n", t)
 			}()
 		}
-
 		wg.Wait()
 		br.Cleanup()
 	})
