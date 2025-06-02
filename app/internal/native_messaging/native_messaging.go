@@ -54,19 +54,19 @@ func determineByteOrder() binary.ByteOrder {
 
 func (nm *NativeMessaging[I, O]) Start(responder Responder[I]) {
 	go func() {
-		nm.ReadMessagesFromBrowser(responder)
+		nm.ReadMessages(responder)
 		close(nm.sends)
 	}()
 	go func() {
 		for msg := range nm.sends {
-			nm.doSendToBrowser(msg)
+			nm.sendMessageNow(msg)
 		}
 	}()
 }
 
-// ReadMessagesFromBrowser creates a new buffered I/O reader and reads messages from inputFile.
-func (nm *NativeMessaging[I, O]) ReadMessagesFromBrowser(responder Responder[I]) {
-	nm.logger.Trace.Printf("Chrome native messaging host started. Native byte order: %v.", nm.nativeEndian)
+// ReadMessages creates a new buffered I/O reader and reads messages from inputFile.
+func (nm *NativeMessaging[I, O]) ReadMessages(responder Responder[I]) {
+	nm.logger.Trace.Printf("Native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
 	v := bufio.NewReader(nm.inputHandle)
 	// adjust buffer size to accommodate your json payload size limits; default is 4096
@@ -97,11 +97,10 @@ func (nm *NativeMessaging[I, O]) ReadMessagesFromBrowser(responder Responder[I])
 		}
 
 		// message has been read, now parse and process
-		nm.handleMessageFromBrowser(content, responder)
+		nm.handleMessage(content, responder)
 	}
 
-	nm.logger.Trace.Print("Stdin closed.")
-	nm.logger.Trace.Print("Chrome native messaging host exited.")
+	nm.logger.Trace.Print("Native messaging host exited.")
 }
 
 // readMessageLength reads and returns the message length value in native byte order.
@@ -115,15 +114,15 @@ func (nm *NativeMessaging[I, O]) readMessageLength(msg []byte) int {
 	return int(length)
 }
 
-// handleMessageFromBrowser parses incoming message from browser
-func (nm *NativeMessaging[I, O]) handleMessageFromBrowser(msg []byte, responder Responder[I]) {
-	incomingMsg := nm.decodeMessageFromBrowser(msg)
-	nm.logger.Trace.Printf("Message received from browser: %s", msg)
+// handleMessage parses incoming message from input
+func (nm *NativeMessaging[I, O]) handleMessage(msg []byte, responder Responder[I]) {
+	incomingMsg := nm.decodeMessage(msg)
+	nm.logger.Trace.Printf("Message received: %s", msg)
 	responder.HandleMessage(incomingMsg)
 }
 
-// decodeMessageFromBrowser unmarshals incoming json request and returns query value.
-func (nm *NativeMessaging[I, O]) decodeMessageFromBrowser(msg []byte) I {
+// decodeMessage unmarshals incoming json request and returns query value.
+func (nm *NativeMessaging[I, O]) decodeMessage(msg []byte) I {
 	var incomingMsg I
 	err := json.Unmarshal(msg, &incomingMsg)
 	if err != nil {
@@ -132,13 +131,13 @@ func (nm *NativeMessaging[I, O]) decodeMessageFromBrowser(msg []byte) I {
 	return incomingMsg
 }
 
-// SendToBrowser queues an outgoing message to be sent to outputFile.
-func (nm *NativeMessaging[I, O]) SendToBrowser(msg O) {
+// SendMessage queues an outgoing message to be sent to outputFile.
+func (nm *NativeMessaging[I, O]) SendMessage(msg O) {
 	nm.sends <- msg
 }
 
-// doSendToBrowser sends an outgoing message to outputFile.
-func (nm *NativeMessaging[I, O]) doSendToBrowser(msg O) {
+// sendMessageNow sends an outgoing message to outputFile.
+func (nm *NativeMessaging[I, O]) sendMessageNow(msg O) {
 	byteMsg := nm.dataToBytes(msg)
 	nm.writeMessageLength(byteMsg)
 
@@ -150,10 +149,10 @@ func (nm *NativeMessaging[I, O]) doSendToBrowser(msg O) {
 
 	_, err = msgBuf.WriteTo(nm.outputHandle)
 	if err != nil {
-		nm.logger.Error.Printf("Unable to write message buffer to Stdout: %v", err)
+		nm.logger.Error.Printf("Unable to write message buffer: %v", err)
 	}
 
-	nm.logger.Trace.Printf("Message sent to browser: %s", byteMsg)
+	nm.logger.Trace.Printf("Message sent: %s", byteMsg)
 }
 
 // dataToBytes marshals an outcoming message struct to slice of bytes
@@ -169,6 +168,6 @@ func (nm *NativeMessaging[I, O]) dataToBytes(msg O) []byte {
 func (nm *NativeMessaging[I, O]) writeMessageLength(msg []byte) {
 	err := binary.Write(nm.outputHandle, nm.nativeEndian, uint32(len(msg)))
 	if err != nil {
-		nm.logger.Error.Printf("Unable to write message length to Stdout: %v", err)
+		nm.logger.Error.Printf("Unable to write message length: %v", err)
 	}
 }

@@ -19,7 +19,7 @@ func NewTestBrowserSender() TestBrowserSender {
 	}
 }
 
-func (resp *TestBrowserSender) SendToBrowser(msg OutgoingBrowserMessage) {
+func (resp *TestBrowserSender) SendMessage(msg OutgoingBrowserMessage) {
 	resp.messages <- msg
 }
 

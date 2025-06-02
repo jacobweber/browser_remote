@@ -126,7 +126,7 @@ func (br *TestBrowserRemote) ListenForBrowserToReceiveQuery(s string) chan web_s
 }
 
 func (br *TestBrowserRemote) SendBrowserResponse(id string, status string, result string) {
-	br.browser.SendToBrowser(web_server.IncomingBrowserMessage{Id: id, Status: status, Result: result})
+	br.browser.SendMessage(web_server.IncomingBrowserMessage{Id: id, Status: status, Result: result})
 }
 
 func (br *TestBrowserRemote) AssertWebResponse(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {

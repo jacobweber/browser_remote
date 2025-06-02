@@ -40,7 +40,7 @@ type OutgoingHttpMessage struct {
 }
 
 type BrowserSender interface {
-	SendToBrowser(msg OutgoingBrowserMessage)
+	SendMessage(msg OutgoingBrowserMessage)
 }
 
 type Timer interface {
@@ -130,7 +130,7 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	browserResponder := make(chan IncomingBrowserMessage)
 	ws.browserResponders.Set(uuid, browserResponder)
 	defer ws.browserResponders.Delete(uuid)
-	ws.sender.SendToBrowser(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
+	ws.sender.SendMessage(OutgoingBrowserMessage{Id: uuid, Query: msg.Query})
 
 	var timer Timer
 	timer, ok := req.Context().Value(TimerKey{}).(Timer)

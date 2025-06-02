@@ -66,13 +66,13 @@ func TestNativeReader(t *testing.T) {
 		browserDone <- true
 	}()
 
-	native.SendToBrowser(TestMessageToBrowser{Question: "name"})
+	native.SendMessage(TestMessageToBrowser{Question: "name"})
 	msgToBrowser := <-browserResponder.messages
 	if msgToBrowser.Question != "name" {
 		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Question)
 	}
 
-	browser.SendToBrowser(TestMessageFromBrowser{Answer: "john"})
+	browser.SendMessage(TestMessageFromBrowser{Answer: "john"})
 	msgToNative := <-nativeResponder.messages
 	if msgToNative.Answer != "john" {
 		t.Errorf("Invalid message received from browser: %v", msgToNative.Answer)
