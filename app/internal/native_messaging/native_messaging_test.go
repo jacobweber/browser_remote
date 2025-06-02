@@ -73,7 +73,7 @@ func TestNativeMessaging(t *testing.T) {
 	messageWriterToBrowser.SendMessage(TestMessageToBrowser{Question: "name"})
 	messageFromNative := <-messageFromNativeHandler.messages
 	if messageFromNative.Question != "name" {
-		t.Errorf("Invalid message sent to browser: %v", messageFromNative.Question)
+		t.Errorf("Invalid message received from native: %v", messageFromNative.Question)
 	}
 
 	messageWriterToNative.SendMessage(TestMessageFromBrowser{Answer: "john"})
