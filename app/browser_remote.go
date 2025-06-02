@@ -48,9 +48,11 @@ func main() {
 		return
 	}
 
-	nm := native_messaging.NewNativeMessaging[shared.MessageFromBrowser, shared.MessageToBrowser](&logger, os.Stdin, os.Stdout)
-	ws := web_server.NewWebServer(&logger, &nm)
+	nmReader := native_messaging.NewNativeMessagingReader[shared.MessageFromBrowser](&logger, os.Stdin)
+	nmWriter := native_messaging.NewNativeMessagingWriter[shared.MessageToBrowser](&logger, os.Stdout)
+	ws := web_server.NewWebServer(&logger, &nmWriter)
 
 	ws.Start(*host, openPort)
-	nm.Start(&ws)
+	go nmReader.Start(&ws)
+	go nmWriter.Start()
 }

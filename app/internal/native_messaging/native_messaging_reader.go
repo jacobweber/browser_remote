@@ -6,22 +6,18 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"example/remote/internal/logger"
+	"example/remote/internal/shared"
 	"io"
-	"unsafe"
 )
 
 type Responder[I any] interface {
 	HandleMessage(msg I)
 }
 
-type NativeMessaging[I any, O any] struct {
+type NativeMessagingReader[I any] struct {
 	logger *logger.Logger
 
 	inputHandle io.Reader
-
-	outputHandle io.Writer
-
-	sends chan O
 
 	// bufferSize used to set size of IO buffer - adjust to accommodate message payloads
 	bufferSize int
@@ -30,42 +26,17 @@ type NativeMessaging[I any, O any] struct {
 	nativeEndian binary.ByteOrder
 }
 
-func NewNativeMessaging[I any, O any](logger *logger.Logger, inputHandle io.Reader, outputHandle io.Writer) NativeMessaging[I, O] {
-	return NativeMessaging[I, O]{
+func NewNativeMessagingReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessagingReader[I] {
+	return NativeMessagingReader[I]{
 		logger:       logger,
 		inputHandle:  inputHandle,
-		outputHandle: outputHandle,
-		sends:        make(chan O),
 		bufferSize:   8192,
-		nativeEndian: determineByteOrder(),
+		nativeEndian: shared.DetermineByteOrder(),
 	}
-}
-
-func determineByteOrder() binary.ByteOrder {
-	// determine native byte order so that we can read message size correctly
-	var one int16 = 1
-	b := (*byte)(unsafe.Pointer(&one))
-	if *b == 0 {
-		return binary.BigEndian
-	} else {
-		return binary.LittleEndian
-	}
-}
-
-func (nm *NativeMessaging[I, O]) Start(responder Responder[I]) {
-	go func() {
-		nm.ReadMessages(responder)
-		close(nm.sends)
-	}()
-	go func() {
-		for msg := range nm.sends {
-			nm.sendMessageNow(msg)
-		}
-	}()
 }
 
 // ReadMessages creates a new buffered I/O reader and reads messages from inputFile.
-func (nm *NativeMessaging[I, O]) ReadMessages(responder Responder[I]) {
+func (nm *NativeMessagingReader[I]) Start(responder Responder[I]) {
 	nm.logger.Trace.Printf("Native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
 	v := bufio.NewReader(nm.inputHandle)
@@ -104,7 +75,7 @@ func (nm *NativeMessaging[I, O]) ReadMessages(responder Responder[I]) {
 }
 
 // readMessageLength reads and returns the message length value in native byte order.
-func (nm *NativeMessaging[I, O]) readMessageLength(msg []byte) int {
+func (nm *NativeMessagingReader[I]) readMessageLength(msg []byte) int {
 	var length uint32
 	buf := bytes.NewBuffer(msg)
 	err := binary.Read(buf, nm.nativeEndian, &length)
@@ -115,59 +86,18 @@ func (nm *NativeMessaging[I, O]) readMessageLength(msg []byte) int {
 }
 
 // handleMessage parses incoming message from input
-func (nm *NativeMessaging[I, O]) handleMessage(msg []byte, responder Responder[I]) {
+func (nm *NativeMessagingReader[I]) handleMessage(msg []byte, responder Responder[I]) {
 	incomingMsg := nm.decodeMessage(msg)
 	nm.logger.Trace.Printf("Message received: %s", msg)
 	responder.HandleMessage(incomingMsg)
 }
 
 // decodeMessage unmarshals incoming json request and returns query value.
-func (nm *NativeMessaging[I, O]) decodeMessage(msg []byte) I {
+func (nm *NativeMessagingReader[I]) decodeMessage(msg []byte) I {
 	var incomingMsg I
 	err := json.Unmarshal(msg, &incomingMsg)
 	if err != nil {
 		nm.logger.Error.Printf("Unable to unmarshal json to struct: %v", err)
 	}
 	return incomingMsg
-}
-
-// SendMessage queues an outgoing message to be sent to outputFile.
-func (nm *NativeMessaging[I, O]) SendMessage(msg O) {
-	nm.sends <- msg
-}
-
-// sendMessageNow sends an outgoing message to outputFile.
-func (nm *NativeMessaging[I, O]) sendMessageNow(msg O) {
-	byteMsg := nm.dataToBytes(msg)
-	nm.writeMessageLength(byteMsg)
-
-	var msgBuf bytes.Buffer
-	_, err := msgBuf.Write(byteMsg)
-	if err != nil {
-		nm.logger.Error.Printf("Unable to write message length to message buffer: %v", err)
-	}
-
-	_, err = msgBuf.WriteTo(nm.outputHandle)
-	if err != nil {
-		nm.logger.Error.Printf("Unable to write message buffer: %v", err)
-	}
-
-	nm.logger.Trace.Printf("Message sent: %s", byteMsg)
-}
-
-// dataToBytes marshals an outcoming message struct to slice of bytes
-func (nm *NativeMessaging[I, O]) dataToBytes(msg O) []byte {
-	byteMsg, err := json.Marshal(msg)
-	if err != nil {
-		nm.logger.Error.Printf("Unable to marshal outgoing message struct to slice of bytes: %v", err)
-	}
-	return byteMsg
-}
-
-// writeMessageLength determines length of message and writes it to outputFile.
-func (nm *NativeMessaging[I, O]) writeMessageLength(msg []byte) {
-	err := binary.Write(nm.outputHandle, nm.nativeEndian, uint32(len(msg)))
-	if err != nil {
-		nm.logger.Error.Printf("Unable to write message length: %v", err)
-	}
 }
