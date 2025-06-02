@@ -2,6 +2,7 @@ package web_server
 
 import (
 	"example/remote/internal/logger"
+	"example/remote/internal/shared"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,16 +11,16 @@ import (
 )
 
 type TestSenderToBrowser struct {
-	messages chan MessageToBrowser
+	messages chan shared.MessageToBrowser
 }
 
 func NewTestSenderToBrowser() TestSenderToBrowser {
 	return TestSenderToBrowser{
-		messages: make(chan MessageToBrowser),
+		messages: make(chan shared.MessageToBrowser),
 	}
 }
 
-func (resp *TestSenderToBrowser) SendMessage(msg MessageToBrowser) {
+func (resp *TestSenderToBrowser) SendMessage(msg shared.MessageToBrowser) {
 	resp.messages <- msg
 }
 
@@ -41,7 +42,7 @@ func TestWebServer(t *testing.T) {
 	if msg.Query != "name" {
 		t.Errorf("invalid message sent to web server: %v", msg.Query)
 	}
-	ws.HandleMessage(MessageFromBrowser{Id: msg.Id, Status: "ok", Result: "john"})
+	ws.HandleMessage(shared.MessageFromBrowser{Id: msg.Id, Status: "ok", Result: "john"})
 
 	<-postDone
 	resp := recorder.Result()

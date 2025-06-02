@@ -24,6 +24,7 @@ import (
 	"example/remote/internal/logger"
 	"example/remote/internal/native_messaging"
 	"example/remote/internal/network"
+	"example/remote/internal/shared"
 	"example/remote/internal/web_server"
 	"flag"
 	"os"
@@ -47,7 +48,7 @@ func main() {
 		return
 	}
 
-	nm := native_messaging.NewNativeMessaging[web_server.MessageFromBrowser, web_server.MessageToBrowser](&logger, os.Stdin, os.Stdout)
+	nm := native_messaging.NewNativeMessaging[shared.MessageFromBrowser, shared.MessageToBrowser](&logger, os.Stdin, os.Stdout)
 	ws := web_server.NewWebServer(&logger, &nm)
 
 	ws.Start(*host, openPort)
