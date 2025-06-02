@@ -14,31 +14,31 @@ type TestMessageToBrowser struct {
 	Question string `json:"question"`
 }
 
-type TestResponderFromBrowser struct {
+type TestMessageFromBrowserHandler struct {
 	messages chan TestMessageFromBrowser
 }
 
-func NewTestResponderFromBrowser() TestResponderFromBrowser {
-	return TestResponderFromBrowser{
+func NewTestMessageFromBrowserHandler() TestMessageFromBrowserHandler {
+	return TestMessageFromBrowserHandler{
 		messages: make(chan TestMessageFromBrowser),
 	}
 }
 
-func (resp *TestResponderFromBrowser) HandleMessage(incomingMsg TestMessageFromBrowser) {
+func (resp *TestMessageFromBrowserHandler) HandleMessage(incomingMsg TestMessageFromBrowser) {
 	resp.messages <- incomingMsg
 }
 
-type TestResponderToBrowser struct {
+type TestMessageFromNativeHandler struct {
 	messages chan TestMessageToBrowser
 }
 
-func NewTestResponderToBrowser() TestResponderToBrowser {
-	return TestResponderToBrowser{
+func NewTestMessageFromNativeHandler() TestMessageFromNativeHandler {
+	return TestMessageFromNativeHandler{
 		messages: make(chan TestMessageToBrowser),
 	}
 }
 
-func (resp *TestResponderToBrowser) HandleMessage(incomingMsg TestMessageToBrowser) {
+func (resp *TestMessageFromNativeHandler) HandleMessage(incomingMsg TestMessageToBrowser) {
 	resp.messages <- incomingMsg
 }
 
@@ -54,32 +54,32 @@ func TestNativeMessaging(t *testing.T) {
 	messageReaderFromNative := NewNativeMessagingReader[TestMessageToBrowser](&logger, readerFromNative)
 	messageWriterToNative := NewNativeMessagingWriter[TestMessageFromBrowser](&logger, writerToNative)
 
-	nativeResponder := NewTestResponderFromBrowser()
-	browserResponder := NewTestResponderToBrowser()
+	messageFromBrowserHandler := NewTestMessageFromBrowserHandler()
+	messageFromNativeHandler := NewTestMessageFromNativeHandler()
 
 	readerFromBrowserDone := make(chan bool)
 	readerFromNativeDone := make(chan bool)
 	go func() {
-		messageReaderFromBrowser.Start(&nativeResponder)
+		messageReaderFromBrowser.Start(&messageFromBrowserHandler)
 		readerFromBrowserDone <- true
 	}()
 	go func() {
-		messageReaderFromNative.Start(&browserResponder)
+		messageReaderFromNative.Start(&messageFromNativeHandler)
 		readerFromNativeDone <- true
 	}()
 	go messageWriterToBrowser.Start()
 	go messageWriterToNative.Start()
 
 	messageWriterToBrowser.SendMessage(TestMessageToBrowser{Question: "name"})
-	msgToBrowser := <-browserResponder.messages
-	if msgToBrowser.Question != "name" {
-		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Question)
+	messageFromNative := <-messageFromNativeHandler.messages
+	if messageFromNative.Question != "name" {
+		t.Errorf("Invalid message sent to browser: %v", messageFromNative.Question)
 	}
 
 	messageWriterToNative.SendMessage(TestMessageFromBrowser{Answer: "john"})
-	msgToNative := <-nativeResponder.messages
-	if msgToNative.Answer != "john" {
-		t.Errorf("Invalid message received from browser: %v", msgToNative.Answer)
+	messageFromBrowser := <-messageFromBrowserHandler.messages
+	if messageFromBrowser.Answer != "john" {
+		t.Errorf("Invalid message received from browser: %v", messageFromBrowser.Answer)
 	}
 
 	writerToNative.Close()

@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-type Responder[I any] interface {
+type MessageHandler[I any] interface {
 	HandleMessage(msg I)
 }
 
@@ -36,7 +36,7 @@ func NewNativeMessagingReader[I any](logger *logger.Logger, inputHandle io.Reade
 }
 
 // ReadMessages creates a new buffered I/O reader and reads messages from inputFile.
-func (nm *NativeMessagingReader[I]) Start(responder Responder[I]) {
+func (nm *NativeMessagingReader[I]) Start(messageHandler MessageHandler[I]) {
 	nm.logger.Trace.Printf("Native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
 	v := bufio.NewReader(nm.inputHandle)
@@ -68,7 +68,7 @@ func (nm *NativeMessagingReader[I]) Start(responder Responder[I]) {
 		}
 
 		// message has been read, now parse and process
-		nm.handleMessage(content, responder)
+		nm.handleMessage(content, messageHandler)
 	}
 
 	nm.logger.Trace.Print("Native messaging host exited.")
@@ -86,10 +86,10 @@ func (nm *NativeMessagingReader[I]) readMessageLength(msg []byte) int {
 }
 
 // handleMessage parses incoming message from input
-func (nm *NativeMessagingReader[I]) handleMessage(msg []byte, responder Responder[I]) {
+func (nm *NativeMessagingReader[I]) handleMessage(msg []byte, messageHandler MessageHandler[I]) {
 	incomingMsg := nm.decodeMessage(msg)
 	nm.logger.Trace.Printf("Message received: %s", msg)
-	responder.HandleMessage(incomingMsg)
+	messageHandler.HandleMessage(incomingMsg)
 }
 
 // decodeMessage unmarshals incoming json request and returns query value.

@@ -23,18 +23,18 @@ type SenderToBrowser interface {
 type WebServer struct {
 	logger *logger.Logger
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
-	browserResponders *mutex_map.MutexMap[string, chan shared.MessageFromBrowser]
-	sender            SenderToBrowser
-	server            *http.ServeMux
+	messageFromBrowserHandlers *mutex_map.MutexMap[string, chan shared.MessageFromBrowser]
+	senderToBrowser            SenderToBrowser
+	server                     *http.ServeMux
 }
 
-func NewWebServer(logger *logger.Logger, sender SenderToBrowser) WebServer {
+func NewWebServer(logger *logger.Logger, senderToBrowser SenderToBrowser) WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
-		logger:            logger,
-		browserResponders: mutex_map.NewMap[string, chan shared.MessageFromBrowser](),
-		sender:            sender,
-		server:            server,
+		logger:                     logger,
+		messageFromBrowserHandlers: mutex_map.NewMap[string, chan shared.MessageFromBrowser](),
+		senderToBrowser:            senderToBrowser,
+		server:                     server,
 	}
 	ws.server.Handle("/", http.HandlerFunc(ws.HandlePost))
 	return ws
@@ -52,7 +52,7 @@ func (ws *WebServer) Start(host string, port int) {
 
 func (ws *WebServer) HandleMessage(incomingMsg shared.MessageFromBrowser) {
 	if incomingMsg.Id != "" {
-		responder := ws.browserResponders.Get(incomingMsg.Id)
+		responder := ws.messageFromBrowserHandlers.Get(incomingMsg.Id)
 		if responder != nil {
 			ws.logger.Trace.Printf("Message received from browser for ID: %v", incomingMsg.Id)
 			responder <- incomingMsg
@@ -89,10 +89,10 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 
 	// send message to browser with a random ID, and listen for messages from browser with that ID
 	uuid := uuid.NewString()
-	browserResponder := make(chan shared.MessageFromBrowser)
-	ws.browserResponders.Set(uuid, browserResponder)
-	defer ws.browserResponders.Delete(uuid)
-	ws.sender.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query})
+	messageFromBrowserHandler := make(chan shared.MessageFromBrowser)
+	ws.messageFromBrowserHandlers.Set(uuid, messageFromBrowserHandler)
+	defer ws.messageFromBrowserHandlers.Delete(uuid)
+	ws.senderToBrowser.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query})
 
 	var timer shared.Timer
 	timer, ok := req.Context().Value(TimerKey{}).(shared.Timer)
@@ -102,8 +102,8 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 
 	// wait for a browser message or a timeout
 	select {
-	case browserResponse := <-browserResponder:
-		respondJson(w, http.StatusOK, shared.MessageFromWebServer{Status: browserResponse.Status, Result: browserResponse.Result})
+	case messageFromBrowser := <-messageFromBrowserHandler:
+		respondJson(w, http.StatusOK, shared.MessageFromWebServer{Status: messageFromBrowser.Status, Result: messageFromBrowser.Result})
 	case <-timer.StartTimer(browserTimeoutSecs * time.Second):
 		ws.logger.Error.Printf("Timeout responding to request ID %v", uuid)
 		respondJson(w, http.StatusInternalServerError, shared.MessageFromWebServer{Status: "timeout"})
