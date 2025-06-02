@@ -1,5 +1,9 @@
 package shared
 
+import (
+	"time"
+)
+
 // MessageFromBrowser represents a message from the browser to the native host.
 type MessageFromBrowser struct {
 	Id     string `json:"id"`
@@ -22,4 +26,15 @@ type MessageToWebServer struct {
 type MessageFromWebServer struct {
 	Status string `json:"status"`
 	Result any    `json:"result"`
+}
+
+type Timer interface {
+	StartTimer(time.Duration) <-chan time.Time
+}
+
+type RealTimer struct {
+}
+
+func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
+	return time.After(dur)
 }

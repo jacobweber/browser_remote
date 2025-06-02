@@ -20,17 +20,6 @@ type SenderToBrowser interface {
 	SendMessage(msg shared.MessageToBrowser)
 }
 
-type Timer interface {
-	StartTimer(time.Duration) <-chan time.Time
-}
-
-type RealTimer struct {
-}
-
-func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
-	return time.After(dur)
-}
-
 type WebServer struct {
 	logger *logger.Logger
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
@@ -105,10 +94,10 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	defer ws.browserResponders.Delete(uuid)
 	ws.sender.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query})
 
-	var timer Timer
-	timer, ok := req.Context().Value(TimerKey{}).(Timer)
+	var timer shared.Timer
+	timer, ok := req.Context().Value(TimerKey{}).(shared.Timer)
 	if !ok {
-		timer = &RealTimer{}
+		timer = &shared.RealTimer{}
 	}
 
 	// wait for a browser message or a timeout
