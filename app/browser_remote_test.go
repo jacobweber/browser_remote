@@ -94,11 +94,11 @@ func NewTestBrowserRemote() TestBrowserRemote {
 
 func (br *TestBrowserRemote) Start() {
 	go func() {
-		br.native.ReadMessagesFromBrowser(br.ws)
+		br.native.Start(br.ws)
 		br.nativeDone <- true
 	}()
 	go func() {
-		br.browser.ReadMessagesFromBrowser(br.browserResponder)
+		br.browser.Start(br.browserResponder)
 		br.browserDone <- true
 	}()
 }

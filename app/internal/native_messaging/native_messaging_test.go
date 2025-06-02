@@ -58,11 +58,11 @@ func TestNativeReader(t *testing.T) {
 	nativeDone := make(chan bool)
 	browserDone := make(chan bool)
 	go func() {
-		native.ReadMessagesFromBrowser(&nativeResponder)
+		native.Start(&nativeResponder)
 		nativeDone <- true
 	}()
 	go func() {
-		browser.ReadMessagesFromBrowser(&browserResponder)
+		browser.Start(&browserResponder)
 		browserDone <- true
 	}()
 

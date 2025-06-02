@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"example/remote/internal/logger"
 	"io"
-	"sync"
 	"unsafe"
 )
 
@@ -22,7 +21,7 @@ type NativeMessaging[I any, O any] struct {
 
 	outputHandle io.Writer
 
-	writeMutex sync.Mutex
+	sends chan O
 
 	// bufferSize used to set size of IO buffer - adjust to accommodate message payloads
 	bufferSize int
@@ -36,6 +35,7 @@ func NewNativeMessaging[I any, O any](logger *logger.Logger, inputHandle io.Read
 		logger:       logger,
 		inputHandle:  inputHandle,
 		outputHandle: outputHandle,
+		sends:        make(chan O),
 		bufferSize:   8192,
 		nativeEndian: determineByteOrder(),
 	}
@@ -50,6 +50,18 @@ func determineByteOrder() binary.ByteOrder {
 	} else {
 		return binary.LittleEndian
 	}
+}
+
+func (nm *NativeMessaging[I, O]) Start(responder Responder[I]) {
+	go func() {
+		nm.ReadMessagesFromBrowser(responder)
+		close(nm.sends)
+	}()
+	go func() {
+		for msg := range nm.sends {
+			nm.doSendToBrowser(msg)
+		}
+	}()
 }
 
 // ReadMessagesFromBrowser creates a new buffered I/O reader and reads messages from inputFile.
@@ -120,11 +132,13 @@ func (nm *NativeMessaging[I, O]) decodeMessageFromBrowser(msg []byte) I {
 	return incomingMsg
 }
 
-// sendToBrowser sends an outgoing message to outputFile.
+// SendToBrowser queues an outgoing message to be sent to outputFile.
 func (nm *NativeMessaging[I, O]) SendToBrowser(msg O) {
-	nm.writeMutex.Lock()
-	defer nm.writeMutex.Unlock()
+	nm.sends <- msg
+}
 
+// doSendToBrowser sends an outgoing message to outputFile.
+func (nm *NativeMessaging[I, O]) doSendToBrowser(msg O) {
 	byteMsg := nm.dataToBytes(msg)
 	nm.writeMessageLength(byteMsg)
 

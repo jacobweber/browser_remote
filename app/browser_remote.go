@@ -51,5 +51,5 @@ func main() {
 	ws := web_server.NewWebServer(&logger, *host, openPort, &nm)
 
 	ws.Start()
-	nm.ReadMessagesFromBrowser(&ws)
+	nm.Start(&ws)
 }
