@@ -70,7 +70,7 @@ func NewBrowserRemoteTester() BrowserRemoteTester {
 	native := native_messaging.NewNativeMessaging[web_server.IncomingBrowserMessage, web_server.OutgoingBrowserMessage](&logger, inputReader, outputWriter)
 	browser := native_messaging.NewNativeMessaging[web_server.OutgoingBrowserMessage, web_server.IncomingBrowserMessage](&logger, outputReader, inputWriter)
 
-	ws := web_server.NewWebServer(&logger, "localhost", 5555, &native)
+	ws := web_server.NewWebServer(&logger, &native)
 
 	browserResponder := NewTestResponderToBrowser()
 

@@ -56,20 +56,16 @@ func (timer *RealTimer) StartTimer(dur time.Duration) <-chan time.Time {
 
 type WebServer struct {
 	logger *logger.Logger
-	host   string
-	port   int
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
 	browserResponders *mutex_map.MutexMap[string, chan IncomingBrowserMessage]
 	sender            SenderToBrowser
 	server            *http.ServeMux
 }
 
-func NewWebServer(logger *logger.Logger, host string, port int, sender SenderToBrowser) WebServer {
+func NewWebServer(logger *logger.Logger, sender SenderToBrowser) WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
 		logger:            logger,
-		host:              host,
-		port:              port,
 		browserResponders: mutex_map.NewMap[string, chan IncomingBrowserMessage](),
 		sender:            sender,
 		server:            server,
@@ -78,14 +74,14 @@ func NewWebServer(logger *logger.Logger, host string, port int, sender SenderToB
 	return ws
 }
 
-func (ws *WebServer) Start() {
+func (ws *WebServer) Start(host string, port int) {
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf("%v:%v", ws.host, ws.port), ws.server)
+		err := http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), ws.server)
 		if err != nil {
 			ws.logger.Error.Printf("Unable to open HTTP server: %v", err)
 		}
 	}()
-	ws.logger.Trace.Printf("Opened HTTP server on http://%v:%v", ws.host, ws.port)
+	ws.logger.Trace.Printf("Opened HTTP server on http://%v:%v", host, port)
 }
 
 func (ws *WebServer) HandleMessage(incomingMsg IncomingBrowserMessage) {
