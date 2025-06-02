@@ -48,11 +48,11 @@ func TestNativeMessaging(t *testing.T) {
 	readerFromBrowser, writerToNative := io.Pipe()
 	readerFromNative, writerToBrowser := io.Pipe()
 
-	nmReaderFromBrowser := NewNativeMessagingReader[TestMessageFromBrowser](&logger, readerFromBrowser)
-	nmWriterToBrowser := NewNativeMessagingWriter[TestMessageToBrowser](&logger, writerToBrowser)
+	messageReaderFromBrowser := NewNativeMessagingReader[TestMessageFromBrowser](&logger, readerFromBrowser)
+	messageWriterToBrowser := NewNativeMessagingWriter[TestMessageToBrowser](&logger, writerToBrowser)
 	// input/output formats are the same, so use another instance to simulate browser
-	nmReaderFromNative := NewNativeMessagingReader[TestMessageToBrowser](&logger, readerFromNative)
-	nmWriterToNative := NewNativeMessagingWriter[TestMessageFromBrowser](&logger, writerToNative)
+	messageReaderFromNative := NewNativeMessagingReader[TestMessageToBrowser](&logger, readerFromNative)
+	messageWriterToNative := NewNativeMessagingWriter[TestMessageFromBrowser](&logger, writerToNative)
 
 	nativeResponder := NewTestResponderFromBrowser()
 	browserResponder := NewTestResponderToBrowser()
@@ -60,23 +60,23 @@ func TestNativeMessaging(t *testing.T) {
 	readerFromBrowserDone := make(chan bool)
 	readerFromNativeDone := make(chan bool)
 	go func() {
-		nmReaderFromBrowser.Start(&nativeResponder)
+		messageReaderFromBrowser.Start(&nativeResponder)
 		readerFromBrowserDone <- true
 	}()
 	go func() {
-		nmReaderFromNative.Start(&browserResponder)
+		messageReaderFromNative.Start(&browserResponder)
 		readerFromNativeDone <- true
 	}()
-	go nmWriterToBrowser.Start()
-	go nmWriterToNative.Start()
+	go messageWriterToBrowser.Start()
+	go messageWriterToNative.Start()
 
-	nmWriterToBrowser.SendMessage(TestMessageToBrowser{Question: "name"})
+	messageWriterToBrowser.SendMessage(TestMessageToBrowser{Question: "name"})
 	msgToBrowser := <-browserResponder.messages
 	if msgToBrowser.Question != "name" {
 		t.Errorf("Invalid message sent to browser: %v", msgToBrowser.Question)
 	}
 
-	nmWriterToNative.SendMessage(TestMessageFromBrowser{Answer: "john"})
+	messageWriterToNative.SendMessage(TestMessageFromBrowser{Answer: "john"})
 	msgToNative := <-nativeResponder.messages
 	if msgToNative.Answer != "john" {
 		t.Errorf("Invalid message received from browser: %v", msgToNative.Answer)
@@ -86,6 +86,6 @@ func TestNativeMessaging(t *testing.T) {
 	writerToBrowser.Close()
 	<-readerFromBrowserDone
 	<-readerFromNativeDone
-	nmWriterToBrowser.Done()
-	nmWriterToNative.Done()
+	messageWriterToBrowser.Done()
+	messageWriterToNative.Done()
 }

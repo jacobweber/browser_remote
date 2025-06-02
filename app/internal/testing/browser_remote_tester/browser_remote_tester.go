@@ -48,19 +48,19 @@ func (timer *TestTimer) FireTimer() {
 }
 
 type BrowserRemoteTester struct {
-	logger                logger.Logger
-	readerFromBrowser     *io.PipeReader
-	writerToNative        *io.PipeWriter
-	readerFromNative      *io.PipeReader
-	writerToBrowser       *io.PipeWriter
-	nmReaderFromBrowser   *native_messaging.NativeMessagingReader[shared.MessageFromBrowser]
-	nmWriterToBrowser     *native_messaging.NativeMessagingWriter[shared.MessageToBrowser]
-	nmReaderFromNative    *native_messaging.NativeMessagingReader[shared.MessageToBrowser]
-	nmWriterToNative      *native_messaging.NativeMessagingWriter[shared.MessageFromBrowser]
-	ws                    *web_server.WebServer
-	browserResponder      *TestResponderToBrowser
-	readerFromBrowserDone chan bool
-	readerFromNativeDone  chan bool
+	logger                   logger.Logger
+	readerFromBrowser        *io.PipeReader
+	writerToNative           *io.PipeWriter
+	readerFromNative         *io.PipeReader
+	writerToBrowser          *io.PipeWriter
+	messageReaderFromBrowser *native_messaging.NativeMessagingReader[shared.MessageFromBrowser]
+	messageWriterToBrowser   *native_messaging.NativeMessagingWriter[shared.MessageToBrowser]
+	messageReaderFromNative  *native_messaging.NativeMessagingReader[shared.MessageToBrowser]
+	messageWriterToNative    *native_messaging.NativeMessagingWriter[shared.MessageFromBrowser]
+	webServer                *web_server.WebServer
+	browserResponder         *TestResponderToBrowser
+	readerFromBrowserDone    chan bool
+	readerFromNativeDone     chan bool
 }
 
 func NewBrowserRemoteTester() BrowserRemoteTester {
@@ -69,13 +69,13 @@ func NewBrowserRemoteTester() BrowserRemoteTester {
 	readerFromBrowser, writerToNative := io.Pipe()
 	readerFromNative, writerToBrowser := io.Pipe()
 
-	nmReaderFromBrowser := native_messaging.NewNativeMessagingReader[shared.MessageFromBrowser](&logger, readerFromBrowser)
-	nmWriterToBrowser := native_messaging.NewNativeMessagingWriter[shared.MessageToBrowser](&logger, writerToBrowser)
+	messageReaderFromBrowser := native_messaging.NewNativeMessagingReader[shared.MessageFromBrowser](&logger, readerFromBrowser)
+	messageWriterToBrowser := native_messaging.NewNativeMessagingWriter[shared.MessageToBrowser](&logger, writerToBrowser)
 	// input/output formats are the same, so use another instance to simulate browser
-	nmReaderFromNative := native_messaging.NewNativeMessagingReader[shared.MessageToBrowser](&logger, readerFromNative)
-	nmWriterToNative := native_messaging.NewNativeMessagingWriter[shared.MessageFromBrowser](&logger, writerToNative)
+	messageReaderFromNative := native_messaging.NewNativeMessagingReader[shared.MessageToBrowser](&logger, readerFromNative)
+	messageWriterToNative := native_messaging.NewNativeMessagingWriter[shared.MessageFromBrowser](&logger, writerToNative)
 
-	ws := web_server.NewWebServer(&logger, &nmWriterToBrowser)
+	ws := web_server.NewWebServer(&logger, &messageWriterToBrowser)
 
 	browserResponder := NewTestResponderToBrowser()
 
@@ -83,33 +83,33 @@ func NewBrowserRemoteTester() BrowserRemoteTester {
 	readerFromNativeDone := make(chan bool)
 
 	return BrowserRemoteTester{
-		logger:                logger,
-		readerFromBrowser:     readerFromBrowser,
-		writerToNative:        writerToNative,
-		readerFromNative:      readerFromNative,
-		writerToBrowser:       writerToBrowser,
-		nmReaderFromBrowser:   &nmReaderFromBrowser,
-		nmWriterToBrowser:     &nmWriterToBrowser,
-		nmReaderFromNative:    &nmReaderFromNative,
-		nmWriterToNative:      &nmWriterToNative,
-		ws:                    &ws,
-		browserResponder:      &browserResponder,
-		readerFromBrowserDone: readerFromBrowserDone,
-		readerFromNativeDone:  readerFromNativeDone,
+		logger:                   logger,
+		readerFromBrowser:        readerFromBrowser,
+		writerToNative:           writerToNative,
+		readerFromNative:         readerFromNative,
+		writerToBrowser:          writerToBrowser,
+		messageReaderFromBrowser: &messageReaderFromBrowser,
+		messageWriterToBrowser:   &messageWriterToBrowser,
+		messageReaderFromNative:  &messageReaderFromNative,
+		messageWriterToNative:    &messageWriterToNative,
+		webServer:                &ws,
+		browserResponder:         &browserResponder,
+		readerFromBrowserDone:    readerFromBrowserDone,
+		readerFromNativeDone:     readerFromNativeDone,
 	}
 }
 
 func (br *BrowserRemoteTester) Start() {
 	go func() {
-		br.nmReaderFromBrowser.Start(br.ws)
+		br.messageReaderFromBrowser.Start(br.webServer)
 		br.readerFromBrowserDone <- true
 	}()
 	go func() {
-		br.nmReaderFromNative.Start(br.browserResponder)
+		br.messageReaderFromNative.Start(br.browserResponder)
 		br.readerFromNativeDone <- true
 	}()
-	go br.nmWriterToBrowser.Start()
-	go br.nmWriterToNative.Start()
+	go br.messageWriterToBrowser.Start()
+	go br.messageWriterToNative.Start()
 }
 
 func (br *BrowserRemoteTester) SendRequestToWeb(s string) (postDone chan bool, recorder *httptest.ResponseRecorder, timeout *TestTimer) {
@@ -122,7 +122,7 @@ func (br *BrowserRemoteTester) SendRequestToWeb(s string) (postDone chan bool, r
 
 	postDone = make(chan bool)
 	go func() {
-		br.ws.ServeHttp(recorder, req)
+		br.webServer.ServeHttp(recorder, req)
 		postDone <- true
 	}()
 	return
@@ -135,7 +135,7 @@ func (br *BrowserRemoteTester) ListenForQueryToBrowser(s string) chan shared.Mes
 }
 
 func (br *BrowserRemoteTester) SendResponseFromBrowser(id string, status string, result string) {
-	br.nmWriterToNative.SendMessage(shared.MessageFromBrowser{Id: id, Status: status, Result: result})
+	br.messageWriterToNative.SendMessage(shared.MessageFromBrowser{Id: id, Status: status, Result: result})
 }
 
 func (br *BrowserRemoteTester) AssertResponseFromWeb(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {
@@ -156,6 +156,6 @@ func (br *BrowserRemoteTester) Cleanup() {
 	br.writerToBrowser.Close()
 	<-br.readerFromBrowserDone
 	<-br.readerFromNativeDone
-	br.nmWriterToBrowser.Done()
-	br.nmWriterToNative.Done()
+	br.messageWriterToBrowser.Done()
+	br.messageWriterToNative.Done()
 }
