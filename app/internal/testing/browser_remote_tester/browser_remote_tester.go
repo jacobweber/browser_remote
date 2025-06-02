@@ -103,7 +103,7 @@ func (br *BrowserRemoteTester) Start() {
 	}()
 }
 
-func (br *BrowserRemoteTester) SendWebRequest(s string) (postDone chan bool, recorder *httptest.ResponseRecorder, timeout *TestTimer) {
+func (br *BrowserRemoteTester) SendRequestToWeb(s string) (postDone chan bool, recorder *httptest.ResponseRecorder, timeout *TestTimer) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(s))
 	timeout = &TestTimer{}
 	ctx := context.WithValue(req.Context(), web_server.TimerKey{}, timeout)
@@ -119,17 +119,17 @@ func (br *BrowserRemoteTester) SendWebRequest(s string) (postDone chan bool, rec
 	return
 }
 
-func (br *BrowserRemoteTester) ListenForBrowserToReceiveQuery(s string) chan web_server.OutgoingBrowserMessage {
+func (br *BrowserRemoteTester) ListenForQueryToBrowser(s string) chan web_server.OutgoingBrowserMessage {
 	ch := make(chan web_server.OutgoingBrowserMessage)
 	br.browserResponder.queryListeners.Set(s, ch)
 	return ch
 }
 
-func (br *BrowserRemoteTester) SendBrowserResponse(id string, status string, result string) {
+func (br *BrowserRemoteTester) SendResponseFromBrowser(id string, status string, result string) {
 	br.browser.SendMessage(web_server.IncomingBrowserMessage{Id: id, Status: status, Result: result})
 }
 
-func (br *BrowserRemoteTester) AssertWebResponse(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {
+func (br *BrowserRemoteTester) AssertResponseFromWeb(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {
 	<-postDone
 	resp := recorder.Result()
 	body, err := io.ReadAll(resp.Body)
