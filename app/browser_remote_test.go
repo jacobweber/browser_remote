@@ -15,25 +15,25 @@ func TestApp(t *testing.T) {
 		listener := br.ListenForQueryToBrowser("name")
 		postDone, recorder, _ := br.SendRequestToWeb("{\"query\":\"name\"}")
 		msg := <-listener
-		br.SendResponseFromBrowser(msg.Id, "ok", "john")
-		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.SendResponseFromBrowser(msg.Id, "ok", []any{"john"})
+		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
 	})
 
 	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
 		listener := br.ListenForQueryToBrowser("name")
 		postDone, recorder, _ := br.SendRequestToWeb("{\"query\":\"name\"}")
 		msg := <-listener
-		br.SendResponseFromBrowser("xxx", "ok", "jim")
-		br.SendResponseFromBrowser(msg.Id, "ok", "john")
-		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
+		br.SendResponseFromBrowser("xxx", "ok", []any{"jim"})
+		br.SendResponseFromBrowser(msg.Id, "ok", []any{"john"})
+		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
 	})
 
 	t.Run("responds with browser error", func(t *testing.T) {
 		listener := br.ListenForQueryToBrowser("name")
 		postDone, recorder, _ := br.SendRequestToWeb("{\"query\":\"name\"}")
 		msg := <-listener
-		br.SendResponseFromBrowser(msg.Id, "error", "")
-		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"error\",\"result\":\"\"}\n", t)
+		br.SendResponseFromBrowser(msg.Id, "error", []any{})
+		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"error\",\"results\":[]}\n", t)
 	})
 
 	t.Run("responds with timeout error", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestApp(t *testing.T) {
 		postDone, recorder, timeout := br.SendRequestToWeb("{\"query\":\"name\"}")
 		<-listener
 		timeout.FireTimer()
-		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"timeout\",\"result\":null}\n", t)
+		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"timeout\",\"results\":[]}\n", t)
 	})
 
 	t.Run("handles overlapping calls", func(t *testing.T) {
@@ -51,10 +51,10 @@ func TestApp(t *testing.T) {
 		postDone2, recorder2, _ := br.SendRequestToWeb("{\"query\":\"age\"}")
 		msg2 := <-listener2
 		msg1 := <-listener1
-		br.SendResponseFromBrowser(msg2.Id, "ok", "31")
-		br.SendResponseFromBrowser(msg1.Id, "ok", "john")
-		br.AssertResponseFromWeb(postDone1, recorder1, "{\"status\":\"ok\",\"result\":\"john\"}\n", t)
-		br.AssertResponseFromWeb(postDone2, recorder2, "{\"status\":\"ok\",\"result\":\"31\"}\n", t)
+		br.SendResponseFromBrowser(msg2.Id, "ok", []any{31})
+		br.SendResponseFromBrowser(msg1.Id, "ok", []any{"john"})
+		br.AssertResponseFromWeb(postDone1, recorder1, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
+		br.AssertResponseFromWeb(postDone2, recorder2, "{\"status\":\"ok\",\"results\":[31]}\n", t)
 	})
 
 	t.Run("handles parallel calls", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestApp(t *testing.T) {
 				listener := br.ListenForQueryToBrowser("name" + id)
 				postDone, recorder, _ := br.SendRequestToWeb("{\"query\":\"name" + id + "\"}")
 				msg := <-listener
-				br.SendResponseFromBrowser(msg.Id, "ok", "john"+id)
-				br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"result\":\"john"+id+"\"}\n", t)
+				br.SendResponseFromBrowser(msg.Id, "ok", []any{"john" + id})
+				br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"results\":[\"john"+id+"\"]}\n", t)
 			}()
 		}
 		wg.Wait()

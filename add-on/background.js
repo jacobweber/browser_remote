@@ -16,33 +16,52 @@ port.onMessage.addListener((message) => {
     port.postMessage({
       id: message.id,
       status,
-      result: null
+      results: []
     });
   }
 
+  let query = {}
+  if (message.tabs === 'all') {
+    query = {}
+  } else { // front
+    query = {
+      currentWindow: true,
+      active: true,
+    }
+  }
+
   chrome.tabs.query({
-    currentWindow: true,
-    active: true,
+    ...query,
     url: ["https://*/*", "http://*/*"],
   }, tabs => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError.message);
       postError(chrome.runtime.lastError.message);
     } else if (tabs.length === 0) {
-      postError("no open windows");
+      postError("no open tabs");
     } else {
-      chrome.tabs.sendMessage(tabs[0].id, message, {}, response => {
-        if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError.message);
-          postError(chrome.runtime.lastError.message);
-        } else {
-          console.log("Received response from tab", response);
-          port.postMessage({
-            id: message.id,
-            status: response.status,
-            result: response.result
-          });
-        }
+      Promise.all(tabs.map(tab => new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tab.id, message, {}, response => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError.message);
+          } else {
+            console.log("Received response from tab", response);
+            if (response.status !== "ok") {
+              reject(response.status);
+            } else {
+              resolve(response.result);
+            }
+          }
+        });
+      }))).then(results => {
+        port.postMessage({
+          id: message.id,
+          status: "ok",
+          results,
+        });
+      }).catch(error => {
+        console.error(error);
+        postError(error);
       });
     }
   });

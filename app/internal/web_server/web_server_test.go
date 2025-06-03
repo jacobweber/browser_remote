@@ -42,7 +42,7 @@ func TestWebServer(t *testing.T) {
 	if msg.Query != "name" {
 		t.Errorf("invalid message sent to web server: %v", msg.Query)
 	}
-	ws.HandleMessage(shared.MessageFromBrowser{Id: msg.Id, Status: "ok", Result: "john"})
+	ws.HandleMessage(shared.MessageFromBrowser{Id: msg.Id, Status: "ok", Results: []any{"john"}})
 
 	<-postDone
 	resp := recorder.Result()
@@ -51,7 +51,7 @@ func TestWebServer(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected error to be nil got %v", err)
 	}
-	if string(body) != "{\"status\":\"ok\",\"result\":\"john\"}\n" {
+	if string(body) != "{\"status\":\"ok\",\"results\":[\"john\"]}\n" {
 		t.Errorf("invalid response received from web server: %v", string(body))
 	}
 }

@@ -9,12 +9,17 @@ POST /
 	"query": "location.href"
 	// or a function call:
 	"query": "window.open(\"https://www.apple.com\")"
+	// optional:
+	"tabs": "front" (default) | "all"
 }
 
 Response format:
 {
 	"status": "ok" | "error message"
-	"result": "https://www.google.com"
+	// one per tab
+	"results": [
+		"https://www.google.com"
+	]
 }
 */
 

@@ -134,8 +134,8 @@ func (br *BrowserRemoteTester) ListenForQueryToBrowser(s string) chan shared.Mes
 	return ch
 }
 
-func (br *BrowserRemoteTester) SendResponseFromBrowser(id string, status string, result string) {
-	br.messageWriterToNative.SendMessage(shared.MessageFromBrowser{Id: id, Status: status, Result: result})
+func (br *BrowserRemoteTester) SendResponseFromBrowser(id string, status string, results []any) {
+	br.messageWriterToNative.SendMessage(shared.MessageFromBrowser{Id: id, Status: status, Results: results})
 }
 
 func (br *BrowserRemoteTester) AssertResponseFromWeb(postDone <-chan bool, recorder *httptest.ResponseRecorder, s string, t *testing.T) {

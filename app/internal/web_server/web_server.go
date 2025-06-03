@@ -67,12 +67,12 @@ func (ws *WebServer) ServeHttp(w http.ResponseWriter, req *http.Request) {
 func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
 		ws.logger.Error.Printf("Invalid path %v", req.URL.Path)
-		respondJson(w, http.StatusNotFound, shared.MessageFromWebServer{Status: "not found"})
+		respondJson(w, http.StatusNotFound, shared.MessageFromWebServer{Status: "not found", Results: []any{}})
 		return
 	}
 	if req.Method != "POST" {
 		ws.logger.Error.Printf("Invalid method %v", req.Method)
-		respondJson(w, http.StatusMethodNotAllowed, shared.MessageFromWebServer{Status: "invalid method"})
+		respondJson(w, http.StatusMethodNotAllowed, shared.MessageFromWebServer{Status: "invalid method", Results: []any{}})
 		return
 	}
 
@@ -83,7 +83,7 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	err := decoder.Decode(&msg)
 	if err != nil {
 		ws.logger.Error.Printf("Error parsing POST request: %v", err)
-		respondJson(w, http.StatusBadRequest, shared.MessageFromWebServer{Status: "invalid JSON"})
+		respondJson(w, http.StatusBadRequest, shared.MessageFromWebServer{Status: "invalid JSON", Results: []any{}})
 		return
 	}
 
@@ -92,7 +92,7 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	messageFromBrowserHandler := make(chan shared.MessageFromBrowser)
 	ws.messageFromBrowserHandlers.Set(uuid, messageFromBrowserHandler)
 	defer ws.messageFromBrowserHandlers.Delete(uuid)
-	ws.senderToBrowser.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query})
+	ws.senderToBrowser.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query, Tabs: msg.Tabs})
 
 	var timer shared.Timer
 	timer, ok := req.Context().Value(TimerKey{}).(shared.Timer)
@@ -103,10 +103,10 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	// wait for a browser message or a timeout
 	select {
 	case messageFromBrowser := <-messageFromBrowserHandler:
-		respondJson(w, http.StatusOK, shared.MessageFromWebServer{Status: messageFromBrowser.Status, Result: messageFromBrowser.Result})
+		respondJson(w, http.StatusOK, shared.MessageFromWebServer{Status: messageFromBrowser.Status, Results: messageFromBrowser.Results})
 	case <-timer.StartTimer(browserTimeoutSecs * time.Second):
 		ws.logger.Error.Printf("Timeout responding to request ID %v", uuid)
-		respondJson(w, http.StatusInternalServerError, shared.MessageFromWebServer{Status: "timeout"})
+		respondJson(w, http.StatusInternalServerError, shared.MessageFromWebServer{Status: "timeout", Results: []any{}})
 	}
 }
 

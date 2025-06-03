@@ -8,26 +8,28 @@ import (
 
 // Request from the browser to the native host.
 type MessageFromBrowser struct {
-	Id     string `json:"id"`
-	Status string `json:"status"`
-	Result any    `json:"result"`
+	Id      string `json:"id"`
+	Status  string `json:"status"`
+	Results []any  `json:"results"`
 }
 
 // Response from the native host to the browser.
 type MessageToBrowser struct {
 	Id    string `json:"id"`
 	Query string `json:"query"`
+	Tabs  string `json:"tabs"`
 }
 
 // Request to the web server.
 type MessageToWebServer struct {
 	Query string `json:"query"`
+	Tabs  string `json:"tabs"`
 }
 
 // Response from the web server.
 type MessageFromWebServer struct {
-	Status string `json:"status"`
-	Result any    `json:"result"`
+	Status  string `json:"status"`
+	Results []any  `json:"results"`
 }
 
 type Timer interface {
