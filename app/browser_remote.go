@@ -53,6 +53,12 @@ func main() {
 	webServer := web_server.NewWebServer(&logger, &messageWriter)
 
 	webServer.Start(*host, openPort)
-	go messageReader.Start(&webServer)
+	done := make(chan bool)
+	go func() {
+		messageReader.Start(&webServer)
+		done <- true
+	}()
 	go messageWriter.Start()
+	<-done
+	messageWriter.Done()
 }
