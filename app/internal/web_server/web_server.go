@@ -28,11 +28,11 @@ type WebServer struct {
 	server                     *http.ServeMux
 }
 
-func NewWebServer(logger *logger.Logger, senderToBrowser SenderToBrowser) WebServer {
+func New(logger *logger.Logger, senderToBrowser SenderToBrowser) WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
 		logger:                     logger,
-		messageFromBrowserHandlers: mutex_map.NewMap[string, chan shared.MessageFromBrowser](),
+		messageFromBrowserHandlers: mutex_map.New[string, chan shared.MessageFromBrowser](),
 		senderToBrowser:            senderToBrowser,
 		server:                     server,
 	}

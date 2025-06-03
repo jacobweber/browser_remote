@@ -15,20 +15,20 @@ type Logger struct {
 	Error *log.Logger
 }
 
-func NewFileLogger() Logger {
+func NewFile() Logger {
 	file, err := os.OpenFile("browser_remote.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Unable to create and/or open log file.")
 		os.Exit(1)
 	}
-	return NewLogger(file, file, nil)
+	return New(file, file, nil)
 }
 
-func NewStdoutLogger() Logger {
-	return NewLogger(os.Stdout, os.Stderr, nil)
+func NewStdout() Logger {
+	return New(os.Stdout, os.Stderr, nil)
 }
 
-func NewLogger(traceHandle io.Writer, errorHandle io.Writer, file *os.File) Logger {
+func New(traceHandle io.Writer, errorHandle io.Writer, file *os.File) Logger {
 	trace := log.New(traceHandle, "TRACE: ", log.Ldate|log.Ltime|log.Lshortfile)
 	error := log.New(errorHandle, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 

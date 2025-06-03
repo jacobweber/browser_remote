@@ -19,7 +19,7 @@ type NativeMessagingWriter[O any] struct {
 	nativeEndian binary.ByteOrder
 }
 
-func NewNativeMessagingWriter[O any](logger *logger.Logger, outputHandle io.Writer) NativeMessagingWriter[O] {
+func NewWriter[O any](logger *logger.Logger, outputHandle io.Writer) NativeMessagingWriter[O] {
 	return NativeMessagingWriter[O]{
 		logger:       logger,
 		outputHandle: outputHandle,

@@ -31,7 +31,7 @@ import (
 )
 
 func main() {
-	logger := logger.NewFileLogger()
+	logger := logger.NewFile()
 	defer logger.Cleanup()
 
 	host := flag.String("host", "localhost", "web server hostname")
@@ -48,9 +48,9 @@ func main() {
 		return
 	}
 
-	messageReader := native_messaging.NewNativeMessagingReader[shared.MessageFromBrowser](&logger, os.Stdin)
-	messageWriter := native_messaging.NewNativeMessagingWriter[shared.MessageToBrowser](&logger, os.Stdout)
-	webServer := web_server.NewWebServer(&logger, &messageWriter)
+	messageReader := native_messaging.NewReader[shared.MessageFromBrowser](&logger, os.Stdin)
+	messageWriter := native_messaging.NewWriter[shared.MessageToBrowser](&logger, os.Stdout)
+	webServer := web_server.New(&logger, &messageWriter)
 
 	webServer.Start(*host, openPort)
 	done := make(chan bool)

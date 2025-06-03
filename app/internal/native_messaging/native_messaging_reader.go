@@ -25,7 +25,7 @@ type NativeMessagingReader[I any] struct {
 	nativeEndian binary.ByteOrder
 }
 
-func NewNativeMessagingReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessagingReader[I] {
+func NewReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessagingReader[I] {
 	return NativeMessagingReader[I]{
 		logger:       logger,
 		inputHandle:  inputHandle,

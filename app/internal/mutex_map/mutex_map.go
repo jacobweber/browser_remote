@@ -7,7 +7,7 @@ type MutexMap[K comparable, V any] struct {
 	values map[K]V
 }
 
-func NewMap[K comparable, V any]() *MutexMap[K, V] {
+func New[K comparable, V any]() *MutexMap[K, V] {
 	return &MutexMap[K, V]{
 		mutex:  sync.Mutex{},
 		values: make(map[K]V),

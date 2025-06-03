@@ -43,16 +43,16 @@ func (resp *TestMessageFromNativeHandler) HandleMessage(incomingMsg TestMessageT
 }
 
 func TestNativeMessaging(t *testing.T) {
-	logger := logger.NewStdoutLogger()
+	logger := logger.NewStdout()
 
 	readerFromBrowser, writerToNative := io.Pipe()
 	readerFromNative, writerToBrowser := io.Pipe()
 
-	messageReaderFromBrowser := NewNativeMessagingReader[TestMessageFromBrowser](&logger, readerFromBrowser)
-	messageWriterToBrowser := NewNativeMessagingWriter[TestMessageToBrowser](&logger, writerToBrowser)
+	messageReaderFromBrowser := NewReader[TestMessageFromBrowser](&logger, readerFromBrowser)
+	messageWriterToBrowser := NewWriter[TestMessageToBrowser](&logger, writerToBrowser)
 	// input/output formats are the same, so use another instance to simulate browser
-	messageReaderFromNative := NewNativeMessagingReader[TestMessageToBrowser](&logger, readerFromNative)
-	messageWriterToNative := NewNativeMessagingWriter[TestMessageFromBrowser](&logger, writerToNative)
+	messageReaderFromNative := NewReader[TestMessageToBrowser](&logger, readerFromNative)
+	messageWriterToNative := NewWriter[TestMessageFromBrowser](&logger, writerToNative)
 
 	messageFromBrowserHandler := NewTestMessageFromBrowserHandler()
 	messageFromNativeHandler := NewTestMessageFromNativeHandler()

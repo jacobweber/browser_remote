@@ -8,7 +8,7 @@ import (
 )
 
 func TestApp(t *testing.T) {
-	br := browser_remote_tester.NewBrowserRemoteTester()
+	br := browser_remote_tester.New()
 	br.Start()
 
 	t.Run("responds to query", func(t *testing.T) {
