@@ -42,7 +42,7 @@ func main() {
 		logger.Trace.Printf("arg: %v", os.Args[1])
 	}
 
-	openPort, ok := network.FindFreePort(*host, *port, 10, true)
+	openPort, ok := network.FindFreePort(&logger, *host, *port, 10, true)
 	if !ok {
 		logger.Error.Printf("Unable to open port: %v:%v", *host, *port)
 		return

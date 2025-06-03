@@ -16,7 +16,6 @@ type NativeMessagingWriter[O any] struct {
 
 	sends chan O
 
-	// nativeEndian used to detect native byte order
 	nativeEndian binary.ByteOrder
 }
 
@@ -39,12 +38,12 @@ func (nm *NativeMessagingWriter[O]) Done() {
 	close(nm.sends)
 }
 
-// SendMessage queues an outgoing message to be sent to outputFile.
+// Queues an outgoing message to be sent to outputFile.
 func (nm *NativeMessagingWriter[O]) SendMessage(msg O) {
 	nm.sends <- msg
 }
 
-// sendMessageNow sends an outgoing message to outputFile.
+// Sends an outgoing message to outputFile.
 func (nm *NativeMessagingWriter[O]) sendMessageNow(msg O) {
 	byteMsg := nm.dataToBytes(msg)
 	nm.writeMessageLength(byteMsg)
@@ -63,7 +62,7 @@ func (nm *NativeMessagingWriter[O]) sendMessageNow(msg O) {
 	nm.logger.Trace.Printf("Message sent: %s", byteMsg)
 }
 
-// dataToBytes marshals an outcoming message struct to slice of bytes
+// Marshals an outcoming message struct to a slice of bytes.
 func (nm *NativeMessagingWriter[O]) dataToBytes(msg O) []byte {
 	byteMsg, err := json.Marshal(msg)
 	if err != nil {
@@ -72,7 +71,7 @@ func (nm *NativeMessagingWriter[O]) dataToBytes(msg O) []byte {
 	return byteMsg
 }
 
-// writeMessageLength determines length of message and writes it to outputFile.
+// Determines length of message and writes it to outputFile.
 func (nm *NativeMessagingWriter[O]) writeMessageLength(msg []byte) {
 	err := binary.Write(nm.outputHandle, nm.nativeEndian, uint32(len(msg)))
 	if err != nil {

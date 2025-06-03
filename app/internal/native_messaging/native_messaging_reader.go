@@ -19,10 +19,9 @@ type NativeMessagingReader[I any] struct {
 
 	inputHandle io.Reader
 
-	// bufferSize used to set size of IO buffer - adjust to accommodate message payloads
+	// size of IO buffer - adjust to accommodate message payloads
 	bufferSize int
 
-	// nativeEndian used to detect native byte order
 	nativeEndian binary.ByteOrder
 }
 
@@ -35,7 +34,7 @@ func NewNativeMessagingReader[I any](logger *logger.Logger, inputHandle io.Reade
 	}
 }
 
-// ReadMessages creates a new buffered I/O reader and reads messages from inputFile.
+// Creates a new buffered I/O reader and reads messages from inputFile.
 func (nm *NativeMessagingReader[I]) Start(messageHandler MessageHandler[I]) {
 	nm.logger.Trace.Printf("Native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
@@ -74,7 +73,7 @@ func (nm *NativeMessagingReader[I]) Start(messageHandler MessageHandler[I]) {
 	nm.logger.Trace.Print("Native messaging host exited.")
 }
 
-// readMessageLength reads and returns the message length value in native byte order.
+// Reads and returns the message length value in native byte order.
 func (nm *NativeMessagingReader[I]) readMessageLength(msg []byte) int {
 	var length uint32
 	buf := bytes.NewBuffer(msg)
@@ -85,14 +84,14 @@ func (nm *NativeMessagingReader[I]) readMessageLength(msg []byte) int {
 	return int(length)
 }
 
-// handleMessage parses incoming message from input
+// Parses incoming message from input.
 func (nm *NativeMessagingReader[I]) handleMessage(msg []byte, messageHandler MessageHandler[I]) {
 	incomingMsg := nm.decodeMessage(msg)
 	nm.logger.Trace.Printf("Message received: %s", msg)
 	messageHandler.HandleMessage(incomingMsg)
 }
 
-// decodeMessage unmarshals incoming json request and returns query value.
+// Unmarshals incoming json request and returns query value.
 func (nm *NativeMessagingReader[I]) decodeMessage(msg []byte) I {
 	var incomingMsg I
 	err := json.Unmarshal(msg, &incomingMsg)

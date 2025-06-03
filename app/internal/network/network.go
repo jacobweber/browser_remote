@@ -1,18 +1,19 @@
 package network
 
 import (
+	"example/remote/internal/logger"
 	"fmt"
 	"net"
 	"time"
 )
 
-func FindFreePort(host string, port int, maxTries int, increment bool) (int, bool) {
+func FindFreePort(logger *logger.Logger, host string, port int, maxTries int, increment bool) (int, bool) {
 	timeout := time.Second / 2
 	for i := 0; i < maxTries; i++ {
 		if !isPortInUse(host, port, timeout) {
 			return port, true
 		}
-		//Error.Printf("Unable to open port: %v:%v; retrying", host, port)
+		logger.Error.Printf("Unable to open port: %v:%v; trying another port", host, port)
 		time.Sleep(timeout)
 		if increment {
 			port++
