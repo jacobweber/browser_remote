@@ -36,10 +36,6 @@ func New(logger *logger.Logger) *WebServer {
 	return &ws
 }
 
-func (ws *WebServer) OnMessage(handler func(shared.MessageToBrowser)) {
-	ws.senderToBrowser = handler
-}
-
 func (ws *WebServer) Start(host string, port int) {
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), ws.server)
@@ -50,7 +46,11 @@ func (ws *WebServer) Start(host string, port int) {
 	ws.logger.Trace.Printf("Opened HTTP server on http://%v:%v", host, port)
 }
 
-func (ws *WebServer) HandleMessage(incomingMsg shared.MessageFromBrowser) {
+func (ws *WebServer) OnMessageReadyForBrowser(handler func(shared.MessageToBrowser)) {
+	ws.senderToBrowser = handler
+}
+
+func (ws *WebServer) HandleMessageFromBrowser(incomingMsg shared.MessageFromBrowser) {
 	if incomingMsg.Id != "" {
 		responder := ws.messageFromBrowserHandlers.Get(incomingMsg.Id)
 		if responder != nil {

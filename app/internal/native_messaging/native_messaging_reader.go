@@ -33,7 +33,7 @@ func NewReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessag
 	}
 }
 
-func (nm *NativeMessagingReader[I]) OnMessage(handler func(I)) {
+func (nm *NativeMessagingReader[I]) OnMessageRead(handler func(I)) {
 	nm.messageHandler = handler
 }
 

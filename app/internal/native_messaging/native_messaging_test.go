@@ -56,10 +56,10 @@ func TestNativeMessaging(t *testing.T) {
 
 	messageFromBrowserHandler := NewTestMessageFromBrowserHandler()
 	messageFromNativeHandler := NewTestMessageFromNativeHandler()
-	messageReaderFromBrowser.OnMessage(func(msg TestMessageFromBrowser) {
+	messageReaderFromBrowser.OnMessageRead(func(msg TestMessageFromBrowser) {
 		messageFromBrowserHandler.HandleMessage(msg)
 	})
-	messageReaderFromNative.OnMessage(func(msg TestMessageToBrowser) {
+	messageReaderFromNative.OnMessageRead(func(msg TestMessageToBrowser) {
 		messageFromNativeHandler.HandleMessage(msg)
 	})
 

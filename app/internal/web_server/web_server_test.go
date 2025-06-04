@@ -28,7 +28,7 @@ func TestWebServer(t *testing.T) {
 	logger := logger.NewStdout()
 	sender := NewTestSenderToBrowser()
 	ws := New(&logger)
-	ws.OnMessage(func(msg shared.MessageToBrowser) {
+	ws.OnMessageReadyForBrowser(func(msg shared.MessageToBrowser) {
 		sender.SendMessage(msg)
 	})
 
@@ -45,7 +45,7 @@ func TestWebServer(t *testing.T) {
 	if msg.Query != "name" {
 		t.Errorf("invalid message sent to web server: %v", msg.Query)
 	}
-	ws.HandleMessage(shared.MessageFromBrowser{Id: msg.Id, Status: "ok", Results: []any{"john"}})
+	ws.HandleMessageFromBrowser(shared.MessageFromBrowser{Id: msg.Id, Status: "ok", Results: []any{"john"}})
 
 	<-postDone
 	resp := recorder.Result()
