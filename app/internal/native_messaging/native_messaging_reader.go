@@ -10,10 +10,6 @@ import (
 	"io"
 )
 
-type MessageHandler[I any] interface {
-	HandleMessage(msg I)
-}
-
 type NativeMessagingReader[I any] struct {
 	logger *logger.Logger
 
@@ -23,19 +19,26 @@ type NativeMessagingReader[I any] struct {
 	bufferSize int
 
 	nativeEndian binary.ByteOrder
+
+	messageHandler func(I)
 }
 
 func NewReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessagingReader[I] {
 	return NativeMessagingReader[I]{
-		logger:       logger,
-		inputHandle:  inputHandle,
-		bufferSize:   8192,
-		nativeEndian: shared.DetermineByteOrder(),
+		logger:         logger,
+		inputHandle:    inputHandle,
+		bufferSize:     8192,
+		nativeEndian:   shared.DetermineByteOrder(),
+		messageHandler: nil,
 	}
 }
 
+func (nm *NativeMessagingReader[I]) OnMessage(messageHandler func(I)) {
+	nm.messageHandler = messageHandler
+}
+
 // Creates a new buffered I/O reader and reads messages from inputFile.
-func (nm *NativeMessagingReader[I]) Start(messageHandler MessageHandler[I]) {
+func (nm *NativeMessagingReader[I]) Start() {
 	nm.logger.Trace.Printf("Native messaging host started. Native byte order: %v.", nm.nativeEndian)
 
 	v := bufio.NewReader(nm.inputHandle)
@@ -67,7 +70,7 @@ func (nm *NativeMessagingReader[I]) Start(messageHandler MessageHandler[I]) {
 		}
 
 		// message has been read, now parse and process
-		nm.handleMessage(content, messageHandler)
+		nm.handleMessage(content)
 	}
 
 	nm.logger.Trace.Print("Native messaging host exited.")
@@ -85,10 +88,12 @@ func (nm *NativeMessagingReader[I]) readMessageLength(msg []byte) int {
 }
 
 // Parses incoming message from input.
-func (nm *NativeMessagingReader[I]) handleMessage(msg []byte, messageHandler MessageHandler[I]) {
+func (nm *NativeMessagingReader[I]) handleMessage(msg []byte) {
 	incomingMsg := nm.decodeMessage(msg)
 	nm.logger.Trace.Printf("Message received: %s", msg)
-	messageHandler.HandleMessage(incomingMsg)
+	if nm.messageHandler != nil {
+		nm.messageHandler(incomingMsg)
+	}
 }
 
 // Unmarshals incoming json request and returns query value.
