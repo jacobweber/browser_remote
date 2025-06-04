@@ -75,7 +75,10 @@ func New() BrowserRemoteTester {
 	messageReaderFromNative := native_messaging.NewReader[shared.MessageToBrowser](&logger, readerFromNative)
 	messageWriterToNative := native_messaging.NewWriter[shared.MessageFromBrowser](&logger, writerToNative)
 
-	webServer := web_server.New(&logger, &messageWriterToBrowser)
+	webServer := web_server.New(&logger)
+	webServer.OnMessage(func(msg shared.MessageToBrowser) {
+		messageWriterToBrowser.SendMessage(msg)
+	})
 
 	messageReaderFromBrowser.OnMessage(func(msg shared.MessageFromBrowser) {
 		webServer.HandleMessage(msg)
@@ -98,7 +101,7 @@ func New() BrowserRemoteTester {
 		messageWriterToBrowser:   &messageWriterToBrowser,
 		messageReaderFromNative:  &messageReaderFromNative,
 		messageWriterToNative:    &messageWriterToNative,
-		webServer:                &webServer,
+		webServer:                webServer,
 		messageFromNativeHandler: &messageFromNativeHandler,
 		readerFromBrowserDone:    readerFromBrowserDone,
 		readerFromNativeDone:     readerFromNativeDone,

@@ -16,28 +16,28 @@ type TimerKey struct{}
 
 const browserTimeoutSecs = 5
 
-type SenderToBrowser interface {
-	SendMessage(msg shared.MessageToBrowser)
-}
-
 type WebServer struct {
-	logger *logger.Logger
+	logger          *logger.Logger
+	senderToBrowser func(shared.MessageToBrowser)
 	// Map UUIDs of HTTP requests to a channel where we send their browser response.
 	messageFromBrowserHandlers *mutex_map.MutexMap[string, chan shared.MessageFromBrowser]
-	senderToBrowser            SenderToBrowser
 	server                     *http.ServeMux
 }
 
-func New(logger *logger.Logger, senderToBrowser SenderToBrowser) WebServer {
+func New(logger *logger.Logger) *WebServer {
 	server := http.NewServeMux()
 	ws := WebServer{
 		logger:                     logger,
+		senderToBrowser:            nil,
 		messageFromBrowserHandlers: mutex_map.New[string, chan shared.MessageFromBrowser](),
-		senderToBrowser:            senderToBrowser,
 		server:                     server,
 	}
 	ws.server.Handle("/", http.HandlerFunc(ws.HandlePost))
-	return ws
+	return &ws
+}
+
+func (ws *WebServer) OnMessage(handler func(shared.MessageToBrowser)) {
+	ws.senderToBrowser = handler
 }
 
 func (ws *WebServer) Start(host string, port int) {
@@ -92,7 +92,9 @@ func (ws *WebServer) HandlePost(w http.ResponseWriter, req *http.Request) {
 	messageFromBrowserHandler := make(chan shared.MessageFromBrowser)
 	ws.messageFromBrowserHandlers.Set(uuid, messageFromBrowserHandler)
 	defer ws.messageFromBrowserHandlers.Delete(uuid)
-	ws.senderToBrowser.SendMessage(shared.MessageToBrowser{Id: uuid, Query: msg.Query, Tabs: msg.Tabs})
+	if ws.senderToBrowser != nil {
+		ws.senderToBrowser(shared.MessageToBrowser{Id: uuid, Query: msg.Query, Tabs: msg.Tabs})
+	}
 
 	var timer shared.Timer
 	timer, ok := req.Context().Value(TimerKey{}).(shared.Timer)

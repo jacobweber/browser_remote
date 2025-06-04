@@ -33,8 +33,8 @@ func NewReader[I any](logger *logger.Logger, inputHandle io.Reader) NativeMessag
 	}
 }
 
-func (nm *NativeMessagingReader[I]) OnMessage(messageHandler func(I)) {
-	nm.messageHandler = messageHandler
+func (nm *NativeMessagingReader[I]) OnMessage(handler func(I)) {
+	nm.messageHandler = handler
 }
 
 // Creates a new buffered I/O reader and reads messages from inputFile.

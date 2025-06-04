@@ -55,8 +55,11 @@ func main() {
 
 	messageReader := native_messaging.NewReader[shared.MessageFromBrowser](&logger, os.Stdin)
 	messageWriter := native_messaging.NewWriter[shared.MessageToBrowser](&logger, os.Stdout)
-	webServer := web_server.New(&logger, &messageWriter)
+	webServer := web_server.New(&logger)
 
+	webServer.OnMessage(func(msg shared.MessageToBrowser) {
+		messageWriter.SendMessage(msg)
+	})
 	messageReader.OnMessage(func(msg shared.MessageFromBrowser) {
 		webServer.HandleMessage(msg)
 	})

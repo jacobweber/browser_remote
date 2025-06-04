@@ -27,7 +27,10 @@ func (resp *TestSenderToBrowser) SendMessage(msg shared.MessageToBrowser) {
 func TestWebServer(t *testing.T) {
 	logger := logger.NewStdout()
 	sender := NewTestSenderToBrowser()
-	ws := New(&logger, &sender)
+	ws := New(&logger)
+	ws.OnMessage(func(msg shared.MessageToBrowser) {
+		sender.SendMessage(msg)
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{ \"query\": \"name\" }"))
 	recorder := httptest.NewRecorder()
