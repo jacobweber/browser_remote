@@ -6,18 +6,19 @@ import (
 	"unsafe"
 )
 
-// Request from the browser to the native host.
+// Message from the browser to the native host.
 type MessageFromBrowser struct {
 	Id      string `json:"id"`
 	Status  string `json:"status"`
 	Results []any  `json:"results"`
 }
 
-// Response from the native host to the browser.
+// Message from the native host to the browser.
 type MessageToBrowser struct {
-	Id    string `json:"id"`
-	Query string `json:"query"`
-	Tabs  string `json:"tabs"`
+	Id     string `json:"id"`
+	Query  string `json:"query"`
+	Tabs   string `json:"tabs"`
+	Result any    `json:"result"`
 }
 
 // Request to the web server.

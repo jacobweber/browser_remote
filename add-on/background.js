@@ -3,12 +3,25 @@ On startup, connect to the "browser_remote" app.
 */
 let port = chrome.runtime.connectNative("com.jacobweber.browser_remote");
 
+let nativeStatus = null;
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message === "status") {
+    sendResponse(nativeStatus);
+  }
+});
+
 /*
 Listen for messages from the app and log them to the console.
 */
 port.onMessage.addListener((message) => {
   console.log("Received message from native host", message);
   if (!message.id) {
+    return;
+  }
+
+  if (message.id === 'status') {
+    nativeStatus = message.result;
     return;
   }
 

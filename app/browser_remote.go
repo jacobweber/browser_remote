@@ -32,6 +32,7 @@ import (
 	"example/remote/internal/shared"
 	"example/remote/internal/web_server"
 	"flag"
+	"fmt"
 	"os"
 )
 
@@ -71,6 +72,14 @@ func main() {
 		done <- true
 	}()
 	go messageWriter.Start()
+
+	messageWriter.SendMessage(shared.MessageToBrowser{
+		Id: "status",
+		Result: map[string]any{
+			"address": fmt.Sprintf("http://%v:%v", *host, openPort),
+		},
+	})
+
 	<-done
 	messageWriter.Done()
 }
