@@ -1,25 +1,24 @@
-/*
-On startup, connect to the "browser_remote" app.
-*/
+// On startup, connect to the native app.
 let port = chrome.runtime.connectNative("com.jacobweber.browser_remote");
 
 let nativeStatus = null;
 
+// Listen for messages from content scripts.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Popup will request status which we previously received from native app
   if (message === "status") {
     sendResponse(nativeStatus);
   }
 });
 
-/*
-Listen for messages from the app and log them to the console.
-*/
+// Listen for messages from native app.
 port.onMessage.addListener((message) => {
-  console.log("Received message from native host", message);
+  console.log("Received message from native app", message);
   if (!message.id) {
     return;
   }
 
+  // Native app will send status immediately upon launch; store for when popup requests it
   if (message.id === 'status') {
     nativeStatus = message.result;
     return;
@@ -43,6 +42,7 @@ port.onMessage.addListener((message) => {
     }
   }
 
+  // Send message to tabs, wait for their responses, and return combined response to native app.
   chrome.tabs.query({
     ...query,
     url: ["https://*/*", "http://*/*"],
@@ -51,7 +51,7 @@ port.onMessage.addListener((message) => {
       console.error(chrome.runtime.lastError.message);
       postError(chrome.runtime.lastError.message);
     } else if (tabs.length === 0) {
-      postError("no open tabs");
+      postError("no tabs found");
     } else {
       Promise.all(tabs.map(tab => new Promise((resolve, reject) => {
         chrome.tabs.sendMessage(tab.id, message, {}, response => {
@@ -80,9 +80,7 @@ port.onMessage.addListener((message) => {
   });
 });
 
-/*
-Listen for the native messaging port closing.
-*/
+// Listen for the native messaging port closing.
 port.onDisconnect.addListener((port) => {
   if (port.error) {
     console.log(`Disconnected due to an error: ${port.error.message}`);

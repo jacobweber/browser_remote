@@ -1,3 +1,4 @@
+// Evaluate message in tab context, and send back result.
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   console.log("Received message from background script:", message);
   try {
