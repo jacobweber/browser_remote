@@ -15,13 +15,13 @@ jobs:
       - name: install dependencies
         run: go get .
       - name: run tests
-        run: go test github.com/jacobweber/browser_remote/internal/native_messaging -tags testing -v
+        run: go test . -tags testing -v
       - name: build
         run: go build -o bin/browser_remote
       - name: keep artifact
         uses: actions/upload-artifact@v4
         with:
-          name: native-app
+          name: browser_remote
           path: app/bin/browser_remote
   add-on:
     runs-on: ubuntu-latest
@@ -41,5 +41,5 @@ jobs:
       - name: keep artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firefox-add-on
-          path: app/web-ext-artifacts/*.xpi
+          name: browser_remote.xpi
+          path: add-on/web-ext-artifacts/*.xpi
