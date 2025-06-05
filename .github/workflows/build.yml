@@ -2,28 +2,30 @@ name: Build and test
 on: [push]
 jobs:
   native-app:
+    name: Build native app
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./app
     steps:
       - uses: actions/checkout@v4
-      - name: setup go 1.24.x
+      - name: Setup go 1.24.x
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
-      - name: install dependencies
+      - name: Install dependencies
         run: go get .
-      - name: run tests
+      - name: Run tests
         run: go test . -tags testing -v -count 10 -timeout 60s
-      - name: build
+      - name: Build
         run: go build -o bin/browser_remote
-      - name: keep artifact
+      - name: Keep artifact
         uses: actions/upload-artifact@v4
         with:
           name: browser_remote
           path: app/bin/browser_remote
   add-on:
+    name: Build browser add-on
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,13 +41,13 @@ jobs:
         with:
           files: add-on/manifest.json
       # version in manifest.json must be incremented
-      - name: publish
+      - name: Publish
         if: steps.changed-files.outputs.any_changed == 'true'
         run: npx web-ext sign --channel unlisted --api-key="$API_KEY" --api-secret="$API_SECRET"
         env:
           API_KEY: ${{ secrets.FIREFOX_API_KEY }}
           API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
-      - name: keep artifact
+      - name: Keep artifact
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
