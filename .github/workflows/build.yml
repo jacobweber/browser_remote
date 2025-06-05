@@ -33,13 +33,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@46.0.5
       # version in manifest.json must be incremented
       - name: publish
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: npx web-ext sign --channel unlisted --api-key="$API_KEY" --api-secret="$API_SECRET"
         env:
           API_KEY: ${{ secrets.FIREFOX_API_KEY }}
           API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
       - name: keep artifact
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: browser_remote.xpi
