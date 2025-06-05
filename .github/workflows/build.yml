@@ -15,14 +15,14 @@ jobs:
       - name: install dependencies
         run: go get .
       - name: run tests
-        run: go test example/remote/internal/web_server -tags testing -v
+        run: go test example/remote/internal/native_messaging -tags testing -v
       - name: build
         run: go build -o bin/browser_remote
       - name: keep artifact
         uses: actions/upload-artifact@v4
         with:
           name: native-app
-          path: bin/browser_remote
+          path: app/bin/browser_remote
   add-on:
     runs-on: ubuntu-latest
     defaults:
@@ -42,4 +42,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firefox-add-on
-          path: web-ext-artifacts/*.xpi
+          path: app/web-ext-artifacts/*.xpi
