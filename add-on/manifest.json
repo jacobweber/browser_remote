@@ -4,7 +4,7 @@
   "name": "Browser Remote",
   "version": "1.0",
   "icons": {
-    "48": "icons/message.svg"
+    "512": "icons/controller.png"
   },
 
   "browser_specific_settings": {
@@ -19,7 +19,7 @@
   },
 
   "browser_action": {
-    "default_icon": "icons/message.svg",
+    "default_icon": "icons/controller.png",
     "default_popup": "popup/popup.html"
   },
 
