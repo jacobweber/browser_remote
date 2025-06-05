@@ -70,11 +70,11 @@ func New() BrowserRemoteTester {
 	readerFromBrowser, writerToNative := io.Pipe()
 	readerFromNative, writerToBrowser := io.Pipe()
 
-	messageReaderFromBrowser := native_messaging.NewReader[shared.MessageFromBrowser](&logger, readerFromBrowser)
-	messageWriterToBrowser := native_messaging.NewWriter[shared.MessageToBrowser](&logger, writerToBrowser)
+	messageReaderFromBrowser := native_messaging.NewReader[shared.MessageFromBrowser](&logger, readerFromBrowser, "from browser")
+	messageWriterToBrowser := native_messaging.NewWriter[shared.MessageToBrowser](&logger, writerToBrowser, "to browser")
 	// input/output formats are the same, so use another instance to simulate browser
-	messageReaderFromNative := native_messaging.NewReader[shared.MessageToBrowser](&logger, readerFromNative)
-	messageWriterToNative := native_messaging.NewWriter[shared.MessageFromBrowser](&logger, writerToNative)
+	messageReaderFromNative := native_messaging.NewReader[shared.MessageToBrowser](&logger, readerFromNative, "from native")
+	messageWriterToNative := native_messaging.NewWriter[shared.MessageFromBrowser](&logger, writerToNative, "to native")
 
 	webServer := web_server.New(&logger)
 	webServer.OnMessageReadyForBrowser(func(msg shared.MessageToBrowser) {

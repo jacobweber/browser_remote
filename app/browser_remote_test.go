@@ -18,6 +18,7 @@ func TestApp(t *testing.T) {
 		msg := <-listener
 		br.SendResponseFromBrowser(msg.Id, "ok", []any{"john"})
 		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
+		t.Log("test")
 	})
 
 	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
