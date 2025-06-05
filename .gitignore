@@ -19,5 +19,6 @@ bin/
 *.log
 
 # Other
+com.jacobweber.browser_remote*
 NativeMessagingHosts*
 web-ext-artifacts
