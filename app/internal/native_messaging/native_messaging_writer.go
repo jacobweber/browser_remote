@@ -66,7 +66,7 @@ func (nm *NativeMessagingWriter[O]) sendMessageNow(msg O) {
 	nm.logger.Trace.Printf("%v: message sent: %s", nm.name, byteMsg)
 }
 
-// Marshals an outcoming message struct to a slice of bytes.
+// Marshals an outgoing message struct to a slice of bytes.
 func (nm *NativeMessagingWriter[O]) dataToBytes(msg O) []byte {
 	byteMsg, err := json.Marshal(msg)
 	if err != nil {
