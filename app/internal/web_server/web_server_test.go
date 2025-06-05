@@ -28,7 +28,7 @@ func (resp *TestSenderToBrowser) SendMessage(msg shared.MessageToBrowser) {
 func TestWebServer(t *testing.T) {
 	logger := logger.NewStdout()
 	sender := NewTestSenderToBrowser()
-	ws := New(&logger)
+	ws := New(logger)
 	ws.OnMessageReadyForBrowser(func(msg shared.MessageToBrowser) {
 		sender.SendMessage(msg)
 	})

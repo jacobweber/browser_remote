@@ -24,15 +24,15 @@ func main() {
 		logger.Trace.Printf("arg: %v", os.Args[1])
 	}
 
-	openPort, ok := network.FindFreePort(&logger, *host, *port, 10, true)
+	openPort, ok := network.FindFreePort(logger, *host, *port, 10, true)
 	if !ok {
 		logger.Error.Printf("Unable to open port: %v:%v", *host, *port)
 		return
 	}
 
-	messageReader := native_messaging.NewReader[shared.MessageFromBrowser](&logger, os.Stdin, "from browser")
-	messageWriter := native_messaging.NewWriter[shared.MessageToBrowser](&logger, os.Stdout, "to browser")
-	webServer := web_server.New(&logger)
+	messageReader := native_messaging.NewReader[shared.MessageFromBrowser](logger, os.Stdin, "from browser")
+	messageWriter := native_messaging.NewWriter[shared.MessageToBrowser](logger, os.Stdout, "to browser")
+	webServer := web_server.New(logger)
 
 	webServer.OnMessageReadyForBrowser(func(msg shared.MessageToBrowser) {
 		messageWriter.SendMessage(msg)

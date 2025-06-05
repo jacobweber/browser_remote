@@ -26,8 +26,8 @@ type NativeMessagingReader[I any] struct {
 	messageHandler func(I)
 }
 
-func NewReader[I any](logger *logger.Logger, inputHandle io.Reader, name string) NativeMessagingReader[I] {
-	return NativeMessagingReader[I]{
+func NewReader[I any](logger *logger.Logger, inputHandle io.Reader, name string) *NativeMessagingReader[I] {
+	return &NativeMessagingReader[I]{
 		logger:         logger,
 		name:           name,
 		inputHandle:    inputHandle,
