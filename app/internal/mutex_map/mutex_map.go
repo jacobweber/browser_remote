@@ -3,20 +3,20 @@ package mutex_map
 import "sync"
 
 type MutexMap[K comparable, V any] struct {
-	mutex  sync.Mutex
+	mutex  sync.RWMutex
 	values map[K]V
 }
 
 func New[K comparable, V any]() *MutexMap[K, V] {
 	return &MutexMap[K, V]{
-		mutex:  sync.Mutex{},
+		mutex:  sync.RWMutex{},
 		values: make(map[K]V),
 	}
 }
 
 func (m *MutexMap[K, V]) Get(key K) V {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	return m.values[key]
 }
 
