@@ -39,8 +39,13 @@ type TestTimer struct {
 	timer chan time.Time
 }
 
+func NewTestTimer() *TestTimer {
+	return &TestTimer{
+		timer: make(chan time.Time),
+	}
+}
+
 func (timer *TestTimer) StartTimer(time.Duration) <-chan time.Time {
-	timer.timer = make(chan time.Time)
 	return timer.timer
 }
 
@@ -124,7 +129,7 @@ func (br *BrowserRemoteTester) Start() {
 
 func (br *BrowserRemoteTester) SendRequestToWeb(s string) (postDone chan bool, recorder *httptest.ResponseRecorder, timeout *TestTimer) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(s))
-	timeout = &TestTimer{}
+	timeout = NewTestTimer()
 	ctx := context.WithValue(req.Context(), web_server.TimerKey{}, timeout)
 	req = req.WithContext(ctx)
 
