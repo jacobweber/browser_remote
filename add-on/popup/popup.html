@@ -2,8 +2,21 @@
 <html>
   <head>
     <script src="popup.js"></script>
+    <style>
+      body { width: 300px; }
+      #error { display: none }
+      #success { display: none }
+    </style>
   </head>
   <body>
-    The web server can be accessed at <span id="address"></span>.
+    <div id="error">
+      <p>The web server could not be started. Check your host manifest file.</p>
+    </div>
+    <div id="success">
+      <p>The web server can be accessed at <span id="address"></span>. For example:</p>
+      <code>
+        curl <span id="address2"></span> -d '{"query": "location.href" }'
+      </code>
+    </div>
   </body>
 </html>
