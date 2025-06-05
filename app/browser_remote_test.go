@@ -1,10 +1,11 @@
 package main
 
 import (
-	"example/remote/internal/testing/browser_remote_tester"
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/jacobweber/browser_remote/internal/testing/browser_remote_tester"
 )
 
 func TestApp(t *testing.T) {

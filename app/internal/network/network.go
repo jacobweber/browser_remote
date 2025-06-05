@@ -1,10 +1,11 @@
 package network
 
 import (
-	"example/remote/internal/logger"
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
 )
 
 func FindFreePort(logger *logger.Logger, host string, port int, maxTries int, increment bool) (int, bool) {

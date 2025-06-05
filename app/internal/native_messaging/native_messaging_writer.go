@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"example/remote/internal/logger"
-	"example/remote/internal/shared"
 	"io"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
+	"github.com/jacobweber/browser_remote/internal/shared"
 )
 
 type NativeMessagingWriter[O any] struct {

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"example/remote/internal/logger"
-	"example/remote/internal/native_messaging"
-	"example/remote/internal/network"
-	"example/remote/internal/shared"
-	"example/remote/internal/web_server"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
+	"github.com/jacobweber/browser_remote/internal/native_messaging"
+	"github.com/jacobweber/browser_remote/internal/network"
+	"github.com/jacobweber/browser_remote/internal/shared"
+	"github.com/jacobweber/browser_remote/internal/web_server"
 )
 
 func main() {

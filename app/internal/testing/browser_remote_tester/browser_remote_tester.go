@@ -4,17 +4,18 @@ package browser_remote_tester
 
 import (
 	"context"
-	"example/remote/internal/logger"
-	"example/remote/internal/mutex_map"
-	"example/remote/internal/native_messaging"
-	"example/remote/internal/shared"
-	"example/remote/internal/web_server"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
+	"github.com/jacobweber/browser_remote/internal/mutex_map"
+	"github.com/jacobweber/browser_remote/internal/native_messaging"
+	"github.com/jacobweber/browser_remote/internal/shared"
+	"github.com/jacobweber/browser_remote/internal/web_server"
 )
 
 type TestMessageFromNativeHandler struct {

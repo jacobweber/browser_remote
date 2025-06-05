@@ -1,4 +1,4 @@
-module example/remote
+module github.com/jacobweber/browser_remote
 
 go 1.24.3
 

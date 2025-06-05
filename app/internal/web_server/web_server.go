@@ -2,12 +2,13 @@ package web_server
 
 import (
 	"encoding/json"
-	"example/remote/internal/logger"
-	"example/remote/internal/mutex_map"
-	"example/remote/internal/shared"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
+	"github.com/jacobweber/browser_remote/internal/mutex_map"
+	"github.com/jacobweber/browser_remote/internal/shared"
 
 	"github.com/google/uuid"
 )

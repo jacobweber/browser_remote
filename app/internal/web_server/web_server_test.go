@@ -1,13 +1,14 @@
 package web_server
 
 import (
-	"example/remote/internal/logger"
-	"example/remote/internal/shared"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
+	"github.com/jacobweber/browser_remote/internal/shared"
 )
 
 type TestSenderToBrowser struct {

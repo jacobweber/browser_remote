@@ -1,9 +1,10 @@
 package native_messaging
 
 import (
-	"example/remote/internal/logger"
 	"io"
 	"testing"
+
+	"github.com/jacobweber/browser_remote/internal/logger"
 )
 
 type TestMessageFromBrowser struct {

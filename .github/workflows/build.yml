@@ -15,7 +15,7 @@ jobs:
       - name: install dependencies
         run: go get .
       - name: run tests
-        run: go test example/remote/internal/native_messaging -tags testing -v
+        run: go test github.com/jacobweber/browser_remote/internal/native_messaging -tags testing -v
       - name: build
         run: go build -o bin/browser_remote
       - name: keep artifact
