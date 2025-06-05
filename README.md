@@ -1,3 +1,9 @@
+## Browser Remote
+
+Allows you to evaluate and execute JavaScript expressions in a browser, by making a request to a local web server. Useful for automation.
+
+### Installation
+
 Install the `browser_remote` application anywhere on your machine, e.g. in `/path/to/browser_remote`.
 
 Follow the instructions [here](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging#native-messaging-host) to create a native messaging host manifest file for your browser(s).
