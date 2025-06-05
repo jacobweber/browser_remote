@@ -30,26 +30,26 @@ func main() {
 		return
 	}
 
-	messageReader := native_messaging.NewReader[shared.MessageFromBrowser](logger, os.Stdin, "from browser")
-	messageWriter := native_messaging.NewWriter[shared.MessageToBrowser](logger, os.Stdout, "to browser")
+	messageReaderFromBrowser := native_messaging.NewReader[shared.MessageFromBrowser](logger, os.Stdin, "from browser")
+	messageWriterToBrowser := native_messaging.NewWriter[shared.MessageToBrowser](logger, os.Stdout, "to browser")
 	webServer := web_server.New(logger)
 
 	webServer.OnMessageReadyForBrowser(func(msg shared.MessageToBrowser) {
-		messageWriter.SendMessage(msg)
+		messageWriterToBrowser.SendMessage(msg)
 	})
-	messageReader.OnMessageRead(func(msg shared.MessageFromBrowser) {
+	messageReaderFromBrowser.OnMessageRead(func(msg shared.MessageFromBrowser) {
 		webServer.HandleMessageFromBrowser(msg)
 	})
 
 	webServer.Start(*host, openPort)
 	done := make(chan bool)
 	go func() {
-		messageReader.Start()
+		messageReaderFromBrowser.Start()
 		done <- true
 	}()
-	go messageWriter.Start()
+	go messageWriterToBrowser.Start()
 
-	messageWriter.SendMessage(shared.MessageToBrowser{
+	messageWriterToBrowser.SendMessage(shared.MessageToBrowser{
 		Id: "status",
 		Result: map[string]any{
 			"address": fmt.Sprintf("http://%v:%v", *host, openPort),
@@ -57,5 +57,5 @@ func main() {
 	})
 
 	<-done
-	messageWriter.Done()
+	messageWriterToBrowser.Done()
 }
