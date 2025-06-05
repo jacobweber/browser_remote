@@ -33,6 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
+      # version in manifest.json must be incremented
       - name: publish
         run: npx web-ext sign --channel unlisted --api-key="$API_KEY" --api-secret="$API_SECRET"
         env:

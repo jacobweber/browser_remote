@@ -4,11 +4,11 @@ Allows you to evaluate and execute JavaScript expressions in a browser, by makin
 
 ### Installation
 
-Install the `browser_remote` application anywhere on your machine, e.g. in `/path/to/browser_remote`.
+Install the `browser_remote` artifact anywhere on your machine, e.g. in `/path/to/browser_remote`.
 
 Follow the instructions [here](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging#native-messaging-host) to create a native messaging host manifest file for your browser(s).
 
-Example of this file for Chrome:
+Example of this file for Chrome (replace `path` and `allowed_origins`):
 ```
 {
   "name": "com.jacobweber.browser_remote",
@@ -18,7 +18,7 @@ Example of this file for Chrome:
   "allowed_origins": ["chrome-extension://jgmdchjaeklnmaikghgeiodkegiiedge/"]
 }
 ```
-and for Firefox:
+and for Firefox (replace `path`):
 ```
 {
   "name": "com.jacobweber.browser_remote",
@@ -31,9 +31,11 @@ and for Firefox:
 
 Install the `browser_remote` extension in your browser:
 
-* For Chrome, go to Window > Extensions, enable "Developer mode", click "Load unpacked", and open the extension's folder.
+* For Chrome, go to Window > Extensions, enable "Developer mode", click "Load unpacked", and open the `add-on` folder.
 
-* For Firefox, go to `about:debugging`, click "This Firefox", click "Load Temporary Add-on", and open the extension's `manifest.json`.
+* For Firefox single-session use, go to `about:debugging`, click "This Firefox", click "Load Temporary Add-on", and open the `add-on/manifest.json` file.
+
+* For Firefox long-term use, go to Tools > Add-ons and Themes", click the gear icon, click "Install Add-on From File", and select the .xpi artifact.
 
 
 Once the extension is loaded, it will start a web server on port 5555, or the next free port. You can see the URL by clicking the extension's icon.
@@ -63,3 +65,7 @@ Response format:
 	]
 }
 ```
+
+### Development
+
+For Firefox add-on builds, sign up at https://addons.mozilla.org/en-US/developers/, click "Manage API Keys" to define keys, and store them as Github secrets `FIREFOX_API_KEY` (for JWT issuer) and `FIREFOX_API_SECRET` (for JWT secret).
