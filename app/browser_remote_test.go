@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jacobweber/browser_remote/internal/shared"
 	"github.com/jacobweber/browser_remote/internal/testing/browser_remote_tester"
 )
 
@@ -18,7 +19,6 @@ func TestApp(t *testing.T) {
 		msg := <-listener
 		br.SendResponseFromBrowser(msg.Id, "ok", []any{"john"})
 		br.AssertResponseFromWeb(postDone, recorder, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
-		t.Log("test")
 	})
 
 	t.Run("ignores browser responses with invalid IDs", func(t *testing.T) {
@@ -51,8 +51,20 @@ func TestApp(t *testing.T) {
 		listener1 := br.ListenForQueryToBrowser("name")
 		postDone1, recorder1, _ := br.SendRequestToWeb("{\"query\":\"name\"}")
 		postDone2, recorder2, _ := br.SendRequestToWeb("{\"query\":\"age\"}")
-		msg2 := <-listener2
-		msg1 := <-listener1
+
+		var msg1, msg2 shared.MessageToBrowser
+		done := 0
+		for done < 2 {
+			select {
+			case v := <-listener1:
+				msg1 = v
+				done++
+			case v := <-listener2:
+				msg2 = v
+				done++
+			}
+		}
+
 		br.SendResponseFromBrowser(msg2.Id, "ok", []any{31})
 		br.SendResponseFromBrowser(msg1.Id, "ok", []any{"john"})
 		br.AssertResponseFromWeb(postDone1, recorder1, "{\"status\":\"ok\",\"results\":[\"john\"]}\n", t)
