@@ -2,7 +2,7 @@
   "description": "Run JavaScript from other applications",
   "manifest_version": 2,
   "name": "Browser Remote",
-  "version": "1.0",
+  "version": "1.0.1",
   "icons": {
     "512": "icons/controller.png"
   },

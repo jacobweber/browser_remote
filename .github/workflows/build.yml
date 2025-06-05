@@ -12,8 +12,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
+      - name: install dependencies
+        run: go get .
       - name: run tests
-        run: go test . -tags testing -v
+        run: go test example/remote/internal/web_server -tags testing -v
       - name: build
         run: go build -o bin/browser_remote
       - name: keep artifact
