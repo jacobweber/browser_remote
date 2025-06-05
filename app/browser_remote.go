@@ -1,28 +1,3 @@
-/*
-Opens web server on port 5555, or next free port, or port specified with --port=<port>.
-Send requests to the web server, and they'll be evaluated in the front browser window, and returned.
-
-Request format:
-POST /
-{
-	// an expression to evaluate and return:
-	"query": "location.href"
-	// or a function call:
-	"query": "window.open(\"https://www.apple.com\")"
-	// optional:
-	"tabs": "front" (default) | "all"
-}
-
-Response format:
-{
-	"status": "ok" | "error message"
-	// one per tab
-	"results": [
-		"https://www.google.com"
-	]
-}
-*/
-
 package main
 
 import (
