@@ -38,11 +38,6 @@ jobs:
         uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
         with:
           files: add-on/**
-      - name: List changed files
-        env:
-          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-        run: |
-          echo "List all the files that have changed: $ALL_CHANGED_FILES"
       # version in manifest.json must be incremented
       - name: publish
         if: steps.changed-files.outputs.any_changed == 'true'
