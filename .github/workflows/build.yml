@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: go get .
       - name: Run tests
-        run: go test . -tags testing -v -count 10 -timeout 60s
+        run: go test ./... -tags testing -v -count 10 -timeout 60s
       - name: Build
         run: go build -o bin/browser_remote
       - name: Keep artifact
