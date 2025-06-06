@@ -69,3 +69,5 @@ Response format:
 ### Development
 
 For Firefox add-on builds, sign up at https://addons.mozilla.org/en-US/developers/, click "Manage API Keys" to define keys, and store them as Github secrets `FIREFOX_API_KEY` (for JWT issuer) and `FIREFOX_API_SECRET` (for JWT secret).
+
+Can't upgrade to manifest v3 due to the use of unsafe-eval.
